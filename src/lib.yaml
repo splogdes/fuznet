@@ -1,29 +1,43 @@
 # cells.yaml  – primitive cell library
 # ------------------------------------
 
+OBUF:
+  ports:
+    I: { dir: input,  width: 1 }
+    O: { dir: output, width: 1, type: out }
+  params:   {}
+  resource: { io: 1 }
+
+IBUF:
+  ports:
+    I: { dir: input,  width: 1, type: in }
+    O: { dir: output, width: 1 }
+  params:   {}
+  resource: { io: 1 }
+
+BUFG:
+  ports:
+    I: { dir: input,  width: 1 }
+    O: { dir: output, width: 1, type: clock }
+  params:   {}
+  resource: { lc: 1 }
+
 LUT2:
   ports:
     I0: { dir: input,  width: 1 }
     I1: { dir: input,  width: 1 }
     O:  { dir: output, width: 1 }
   params:
-    INIT: { type: hex, width: 4 }   # 4-bit hex literal (e.g. 4'h8)
-  resource: { lut: 1 }
+    INIT: { type: hex, width: 4 }
+  resource: { lc: 1 }
 
 FDRE:
   ports:
-    C:  { dir: input,  width: 1 }
+    C:  { dir: input,  width: 1, type: clock }
     CE: { dir: input,  width: 1 }
     D:  { dir: input,  width: 1 }
     Q:  { dir: output, width: 1 }
     R:  { dir: input,  width: 1 }
   params:
-    INIT: { type: bin, width: 1 }   # 1-bit binary literal (0/1/x)
-  resource: { ff: 1 }
-
-BUFG:
-  ports:
-    I: { dir: input,  width: 1 }
-    O: { dir: output, width: 1 }
-  params:   {}                      # no configurable parameters
-  resource: { bufg: 1 }
+    INIT: { type: bin, width: 1 }
+  resource: { lc: 1 }
