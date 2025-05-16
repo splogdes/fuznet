@@ -28,6 +28,7 @@ struct Net {
 
     std::string get_name(int width = 0) const;
     void add_sink(Port* p) { assert(p); sinks.push_back(p); }
+    void remove_sink(Port* p); 
 };
 
 // -------------------------------------------------- Port
@@ -63,20 +64,21 @@ class Netlist {
     
         void    add_random_module();
         void    add_external_net();
+        void    switch_port_connection();
         void    insert_output_buffers();
         void    emit_verilog(std::ostream& os, const std::string& top_name = "top");
         void    emit_dotfile(std::ostream& os, const std::string& top_name = "top");
         void    print();
         Net*    make_net(std::string name = "");
-        Net*    get_net(int id);
-
-    private:
+        
+        private:
         void add_buffer(Net* net, const ModuleSpec* buffer);
-        Module* make_module(const ModuleSpec* ms);
         Net* get_random_net(NetType net_type);
-        void update_combinational_groups(std::set<int>& group);
+        std::set<int> get_combinational_group(Net* net);
+        Module* make_module(const ModuleSpec* ms);
         int  get_next_id() { return id_counter++; }
         int  id_width() const { return static_cast<int>(std::log10(id_counter)) + 1; }
+        Net*    get_net(int id);
 
         std::vector<std::unique_ptr<Module>> modules;
         std::vector<std::unique_ptr<Net>>    nets;

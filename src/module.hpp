@@ -18,5 +18,6 @@ struct ModuleSpec {
     std::vector<PortSpec>             ports;
     std::vector<ParamSpec>            params;
     bool                              combinational;
+    int                               weight; // For random module selection
     std::unordered_map<std::string,int> resource;   // e.g. {"lut":1}
 };

@@ -1,6 +1,7 @@
 #include "netlist.hpp"
 #include <algorithm>
 #include <iomanip>
+#include <queue>
 
 std::string Net::get_name(int width) const {
     if (!name.empty()) return name;
@@ -8,6 +9,13 @@ std::string Net::get_name(int width) const {
     if (width - static_cast<int>(std::log10(id)) < 0) throw std::invalid_argument("Width is too small for ID");
     return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
                 + std::to_string(id) + "_";
+}
+
+void Net::remove_sink(Port* p) {
+    auto it = std::remove(sinks.begin(), sinks.end(), p);
+    if (it != sinks.end()) {
+        sinks.erase(it, sinks.end());
+    }
 }
 
 Module::Module(Id id_, const ModuleSpec* ms, std::mt19937_64* rng) : id{id_}, spec{ms} {
@@ -37,27 +45,25 @@ Netlist::Netlist(Library& lib, std::optional<std::mt19937_64> rng_opt)
     : lib(lib), rng(rng_opt.value_or(std::mt19937_64(std::random_device{}()))) {
     Net* input_net = make_net();
     Net* clock_net = make_net();
-    
+
     input_net->net_type = NetType::EXT_IN;
     clock_net->net_type = NetType::EXT_CLK;
     clock_net->name = "clk";
-    
+
     add_buffer(input_net, lib.get_module("IBUF"));
     add_buffer(clock_net, lib.get_module("BUFG"));
-
-    combinational_groups.resize(1);
-    combinational_groups[0].insert(input_net->id);
 }
 
 
 void Netlist::add_external_net() {
-    auto ext_in = make_net();   
+    auto ext_in = make_net();
     ext_in->net_type = NetType::EXT_IN;
+    add_buffer(ext_in, lib.get_module("IBUF"));
 }
-    
+
 
 void Netlist::add_random_module() {
-    auto ms = lib.random_module(rng);
+    auto ms = lib.random_module();
     if (!ms) {
         throw std::runtime_error("Failed to get random module");
     }
@@ -83,13 +89,12 @@ void Netlist::add_buffer(Net* net, const ModuleSpec* buffer) {
             p->net = net;
             net->add_sink(p.get());
         } else if (p->is_output()) {
-            auto new_net = make_net();
-            new_net->net_type = p->net_type;
-            p->net = new_net;
-            new_net->driver = p.get();
+            Net* output_net = make_net();
+            output_net->net_type = p->net_type;
+            p->net = output_net;
+            output_net->driver = p.get();
         }
     }
-
 }
 
 Net* Netlist::get_random_net(NetType type) {
@@ -107,7 +112,6 @@ Net* Netlist::get_random_net(NetType type) {
     return filtered_nets[idx];
 }
 
-
 Module* Netlist::make_module(const ModuleSpec* ms) {
 
     if (!ms) {
@@ -119,7 +123,6 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
     modules.emplace_back(std::move(module));
     module_ptr->id = get_next_id();
 
-    std::set<int> local_group;
     std::vector<Port*> output_ports;
 
     for (auto& p : module_ptr->ports) {
@@ -129,7 +132,6 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
             auto net = get_random_net(p->net_type);
             p->net = net;
             net->add_sink(p.get());
-            local_group.insert(net->id);
         }
     }
 
@@ -138,10 +140,7 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
             net->net_type = p->net_type;
             p->net = net;
             net->driver = p;
-            local_group.insert(net->id);
     }
-
-    if (ms->combinational) update_combinational_groups(local_group);
 
     return module_ptr;
 }
@@ -155,23 +154,35 @@ Net* Netlist::make_net(std::string name) {
 }
 
 Net* Netlist::get_net(int id) {
-    return nets[id].get();
+    for (const auto& net : nets) {
+        if (net->id == id) {
+            return net.get();
+        }
+    }
+    throw std::runtime_error("Net with the specified ID not found");
 }
 
-void Netlist::update_combinational_groups(std::set<int>& group) {
-    std::vector<std::set<int>> new_groups;
-    std::set<int> merged = group;
+std::set<int> Netlist::get_combinational_group(Net* net) {
+    std::set<int> group;
+    std::queue<Net*> queue;
+    queue.push(net);
 
-    for (auto& g : combinational_groups) {
-        if (std::any_of(group.begin(), group.end(), [&g](int id) { return g.count(id); })) {
-            merged.insert(g.begin(), g.end());
-        } else {
-            new_groups.push_back(g);
+    while (!queue.empty()) {
+        Net* current = queue.front();
+        queue.pop();
+        if (group.find(current->id) != group.end()) continue;
+        group.insert(current->id);
+        for (const auto& sink : current->sinks) {
+            if (!sink->parent ||
+                !sink->parent->spec->combinational) 
+                continue;
+            for (const auto& port : sink->parent->ports)
+                if (port->is_output() && port->net_type != NetType::CLK)
+                    queue.push(port->net);
         }
     }
 
-    new_groups.push_back(merged);
-    combinational_groups = std::move(new_groups);
+    return group;
 }
 
 void Netlist::insert_output_buffers() {
@@ -183,7 +194,7 @@ void Netlist::insert_output_buffers() {
 
     for (auto& net : targets)
         add_buffer(net, lib.get_module("OBUF"));
-                
+
 }
 
 void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
@@ -218,7 +229,7 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
         os << "  output " << net->get_name(width) << ";\n";
 
     for (const auto& net : nets)
-        if (net->net_type == NetType::LOGIC)  
+        if (net->net_type == NetType::LOGIC)
             os << "  wire " << net->get_name(width) << ";\n";
 
     for (const auto& module : modules) {
@@ -237,7 +248,6 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
             os << "  " << module->spec->name << " ";
         }
 
-        
         os << module->get_name(width) << " (\n";
 
         for (size_t i = 0; i < module->ports.size(); ++i) {
@@ -288,15 +298,15 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) {
             }
         } else if (net->net_type == NetType::EXT_OUT) {
             os << "  " << net->get_name() << " [shape=octagon, label=\"" << net->get_name() << "\"];\n";
-            os << "  " << net->driver->parent->get_name() << ":<" << net->driver->spec->name << "> -> " 
+            os << "  " << net->driver->parent->get_name() << ":<" << net->driver->spec->name << "> -> "
                << net->get_name() << ";\n";
         } else {
             os << "  " << net->get_name() << " [shape=diamond, label=\"" << net->get_name() << "\"];\n";
             auto driver = net->driver;
-            os << "  " << driver->parent->get_name() << ":<" << driver->spec->name << "> -> " 
+            os << "  " << driver->parent->get_name() << ":<" << driver->spec->name << "> -> "
                << net->get_name() << ":w ;\n";
             for (const auto& sink : net->sinks) {
-                os << "  " << net->get_name() << ":e -> " << sink->parent->get_name() 
+                os << "  " << net->get_name() << ":e -> " << sink->parent->get_name()
                    << ":<" << sink->spec->name << ">;\n";
             }
         }
@@ -313,12 +323,12 @@ void Netlist::print() {
     for (const auto& m : modules) {
         printf("Module ID: %zu, Name: %s\n", m->id, m->spec->name.c_str());
         for (const auto& p : m->ports) {
-            printf("  Port: %s, I/O: %s, Type: %d, Net: %s, Type: %d\n", p->spec->name.c_str(), p->is_input() ? "Input" : "Output", 
-                   p->net_type, p->net->name.c_str(), p->net->net_type);
+            printf("  Port: %s, I/O: %s, Type: %d, Net: %d, Type: %d\n", p->spec->name.c_str(), p->is_input() ? "Input" : "Output",
+                   p->net_type, p->net->id, p->net->net_type);
         }
     }
     for (const auto& n : nets) {
-        printf("Net ID: %zu, Name: %s\n", n->id, n->name.c_str());
+        printf("Net ID: %zu, Name: %s\n", n->id, n->get_name().c_str());
     }
     for (const auto& group : combinational_groups) {
         printf("Combinational group: ");
@@ -329,10 +339,9 @@ void Netlist::print() {
     }
 }
 
-Netlist::~Netlist() {
-    // Destructor will automatically clean up unique_ptrs
-}
+Netlist::~Netlist() {}
 
+#define NETLIST_TEST
 #ifdef NETLIST_TEST
 #include <fstream>
 
@@ -341,13 +350,15 @@ int main() {
         std::mt19937_64 rng;
         rng.seed(32);
         Library lib("/home/splogdes/Documents/UNI/PNR/fuznet/src/lib.yaml");
-        Netlist netlist(lib, rng);
+        Netlist netlist(lib);
         netlist.add_random_module();
         netlist.add_external_net();
-        for (int i = 0; i < 49; ++i) {
+        for (int i = 0; i < 50; ++i) {
             netlist.add_random_module();
         }
         netlist.insert_output_buffers();
+
+        netlist.print();
 
         std::ofstream verilog_file("output.v");
         if (!verilog_file) {

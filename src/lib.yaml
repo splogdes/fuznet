@@ -2,6 +2,7 @@
 # ------------------------------------
 
 OBUF:
+  weight: 1
   ports:
     I: { dir: input,  width: 1 }
     O: { dir: output, width: 1, type: out }
@@ -9,6 +10,7 @@ OBUF:
   resource: { io: 1 }
 
 IBUF:
+  weight: 0
   ports:
     I: { dir: input,  width: 1, type: in }
     O: { dir: output, width: 1 }
@@ -16,6 +18,7 @@ IBUF:
   resource: { io: 1 }
 
 BUFG:
+  weight: 0
   ports:
     I: { dir: input,  width: 1, type: ext_clk }
     O: { dir: output, width: 1, type: clock }
@@ -23,6 +26,7 @@ BUFG:
   resource: { lc: 1 }
 
 LUT2:
+  weight: 2
   ports:
     I0: { dir: input,  width: 1 }
     I1: { dir: input,  width: 1 }
@@ -32,6 +36,7 @@ LUT2:
   resource: { lc: 1 }
 
 FDRE:
+  weight: 3
   ports:
     C:  { dir: input,  width: 1, type: clock }
     CE: { dir: input,  width: 1 }

@@ -1,9 +1,15 @@
 #include "lib.hpp"
 #include <yaml-cpp/yaml.h>
-#include <iostream>
 
-Library::Library(const std::string& filename) {
+Library::Library(const std::string& filename, std::optional<std::mt19937_64> rng_opt) {
     
+    if (rng_opt) {
+        this->rng = *rng_opt;
+    } else {
+        std::random_device rd;
+        this->rng = std::mt19937_64(rd());
+    }
+
     YAML::Node root = YAML::LoadFile(filename);
     
     for (const auto& it : root) {
@@ -71,6 +77,9 @@ Library::Library(const std::string& filename) {
         for (const auto& resource : node["resources"])
             m.resource[resource.first.as<std::string>()] = resource.second.as<int>();
 
+        m.weight = node["weight"].as<int>(1);
+        
+        this->module_weights.push_back(m.weight);
         this->modules[name] = m;
         this->module_names.push_back(name);
     }
@@ -85,10 +94,9 @@ ModuleSpec* Library::get_module(const std::string& name) {
     }
 }
 
-ModuleSpec* Library::random_module(std::optional<std::mt19937_64> rng_opt) {
-    std::mt19937_64 local_rng = rng_opt.value_or(std::mt19937_64(std::random_device{}()));
-    std::uniform_int_distribution<int> dist(0, module_names.size() - 1);
-    int idx = dist(local_rng);
+ModuleSpec* Library::random_module() {
+    std::discrete_distribution<int> dist(module_weights.begin(), module_weights.end());
+    int idx = dist(rng);
     std::string name = module_names[idx];
     auto it = modules.find(name);
     if (it != modules.end()) {
@@ -99,12 +107,14 @@ ModuleSpec* Library::random_module(std::optional<std::mt19937_64> rng_opt) {
 }
 
 #ifdef LIBRARY_TEST
+#include <iostream>
+
 int main() {
     try {
+        std::optional<std::mt19937_64> rng_opt = std::nullopt;
         Library lib("src/lib.yaml");
         
-        std::optional<std::mt19937_64> rng_opt = std::nullopt;
-        ModuleSpec* module = lib.random_module(rng_opt);
+        ModuleSpec* module = lib.random_module();
 
         std::cout << "Random module name: " << module->name << std::endl;
 
@@ -121,7 +131,7 @@ int main() {
         }
 
         for (const auto& param : module->params) {
-            std::cout << "Param name: " << param.name 
+            std::cout << "Param name: " << param.name
                       << ", Width: " << param.width 
                       << std::endl;
         }
@@ -134,6 +144,7 @@ int main() {
 
 
         std::cout << "Combinational: " << (module->combinational ? "true" : "false") << std::endl;
+        std::cout << "Weight: " << module->weight << std::endl;
 
     } catch (const std::exception& e) { 
         std::cerr << "Error: " << e.what() << std::endl;
