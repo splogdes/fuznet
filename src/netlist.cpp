@@ -2,9 +2,39 @@
 #include <algorithm>
 #include <iomanip>
 
+std::string Net::get_name(int width) const {
+    if (!name.empty()) return name;
+    if (width == 0) return std::string("net_") + std::to_string(id);
+    if (width - static_cast<int>(std::log10(id)) < 0) throw std::invalid_argument("Width is too small for ID");
+    return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
+                + std::to_string(id) + "_";
+}
+
+Module::Module(Id id_, const ModuleSpec* ms, std::mt19937_64* rng) : id{id_}, spec{ms} {
+    for (auto& ps : ms->ports) {
+        auto p = std::make_unique<Port>(&ps, this);
+        ports.emplace_back(std::move(p));
+    }
+    if (rng) {
+        for (const auto& pspec : ms->params) {
+            std::string value;
+            for (size_t i = 0; i < pspec.width; ++i) {
+                value += ((*rng)() % 2) ? '1' : '0';
+                param_values[pspec.name] = value;
+            }
+        }
+    }
+}
+
+std::string Module::get_name(int width) const {
+    if (width == 0) return spec->name + "_" + std::to_string(id);
+    if (width - static_cast<int>(std::log10(id)) < 0) throw std::invalid_argument("Width is too small for ID");
+    return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
+                + std::to_string(id) + "_";
+}
+
 Netlist::Netlist(Library& lib, std::optional<std::mt19937_64> rng_opt)
-    : lib(lib), rng(rng_opt.value_or(std::mt19937_64(std::random_device{}())))
-{
+    : lib(lib), rng(rng_opt.value_or(std::mt19937_64(std::random_device{}()))) {
     Net* input_net = make_net();
     Net* clock_net = make_net();
     
@@ -90,20 +120,25 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
     module_ptr->id = get_next_id();
 
     std::set<int> local_group;
+    std::vector<Port*> output_ports;
 
     for (auto& p : module_ptr->ports) {
         if (p->is_output()) {
-            auto net = make_net();
-            net->net_type = p->net_type;
-            p->net = net;
-            net->driver = p.get();
-            local_group.insert(net->id);
+            output_ports.push_back(p.get());
         } else if (p->is_input()) {
             auto net = get_random_net(p->net_type);
             p->net = net;
             net->add_sink(p.get());
             local_group.insert(net->id);
         }
+    }
+
+    for (auto& p : output_ports) {
+            auto net = make_net();
+            net->net_type = p->net_type;
+            p->net = net;
+            net->driver = p;
+            local_group.insert(net->id);
     }
 
     if (ms->combinational) update_combinational_groups(local_group);
@@ -140,14 +175,18 @@ void Netlist::update_combinational_groups(std::set<int>& group) {
 }
 
 void Netlist::insert_output_buffers() {
+    std::vector<Net*> targets;
 
     for (auto& net : nets)
         if (net->sinks.empty() && net->net_type == NetType::LOGIC)
-            add_buffer(net.get(), lib.get_module("OBUF"));
+            targets.push_back(net.get());
+
+    for (auto& net : targets)
+        add_buffer(net, lib.get_module("OBUF"));
+                
 }
 
 void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
-    insert_output_buffers();
 
     std::vector<const Net*> ext_in_nets;
     std::vector<const Net*> ext_out_nets;
@@ -199,7 +238,7 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
         }
 
         
-        os << "_" << module->get_name(width) << "_ " << "(\n";
+        os << module->get_name(width) << " (\n";
 
         for (size_t i = 0; i < module->ports.size(); ++i) {
             auto& port = module->ports[i];
@@ -213,6 +252,59 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
 
     os << "endmodule\n";
 }
+
+void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) {
+    os << "digraph " << top_name << " {\n";
+    os << "  rankdir=LR;\n";
+    for (const auto& module : modules) {
+        os << "  " << module->get_name() << " [shape=record,";
+        std::vector<std::string> input_ports;
+        std::vector<std::string> output_ports;
+        for (const auto& port : module->ports) {
+            if (port->is_input()) {
+                input_ports.push_back(port->spec->name);
+            } else if (port->is_output()) {
+                output_ports.push_back(port->spec->name);
+            }
+        }
+        os << " label=\"{{";
+        for (size_t i = 0; i < input_ports.size(); ++i) {
+            os << " <" << input_ports[i] << "> " << input_ports[i];
+            if (i + 1 < input_ports.size()) os << " |";
+        }
+        os << "}| " << module->spec->name << " | {";
+        for (size_t i = 0; i < output_ports.size(); ++i) {
+            os << " <" << output_ports[i] << "> " << output_ports[i];
+            if (i + 1 < output_ports.size()) os << " |";
+        }
+        os << "}}\"";
+        os << "];\n";
+    }
+    for (const auto& net : nets) {
+        if (net->net_type == NetType::EXT_IN || net->net_type == NetType::EXT_CLK) {
+            os << "  " << net->get_name() << " [shape=octagon, label=\"" << net->get_name() << "\"];\n";
+            for (const auto& sink : net->sinks) {
+                os << "  " << net->get_name() << ":e -> " << sink->parent->get_name() << ":<" << sink->spec->name << ">;\n";
+            }
+        } else if (net->net_type == NetType::EXT_OUT) {
+            os << "  " << net->get_name() << " [shape=octagon, label=\"" << net->get_name() << "\"];\n";
+            os << "  " << net->driver->parent->get_name() << ":<" << net->driver->spec->name << "> -> " 
+               << net->get_name() << ";\n";
+        } else {
+            os << "  " << net->get_name() << " [shape=diamond, label=\"" << net->get_name() << "\"];\n";
+            auto driver = net->driver;
+            os << "  " << driver->parent->get_name() << ":<" << driver->spec->name << "> -> " 
+               << net->get_name() << ":w ;\n";
+            for (const auto& sink : net->sinks) {
+                os << "  " << net->get_name() << ":e -> " << sink->parent->get_name() 
+                   << ":<" << sink->spec->name << ">;\n";
+            }
+        }
+    }
+
+    os << "}\n";
+}
+
 
 void Netlist::print() {
     printf("Netlist:\n");
@@ -241,21 +333,35 @@ Netlist::~Netlist() {
     // Destructor will automatically clean up unique_ptrs
 }
 
-#define NETLIST_TEST
 #ifdef NETLIST_TEST
+#include <fstream>
+
 int main() {
     try {
+        std::mt19937_64 rng;
+        rng.seed(32);
         Library lib("/home/splogdes/Documents/UNI/PNR/fuznet/src/lib.yaml");
-        Netlist netlist(lib);
+        Netlist netlist(lib, rng);
         netlist.add_random_module();
         netlist.add_external_net();
-        netlist.add_random_module();
-        netlist.add_random_module();
-        netlist.add_random_module();
+        for (int i = 0; i < 49; ++i) {
+            netlist.add_random_module();
+        }
+        netlist.insert_output_buffers();
 
-        netlist.print();
+        std::ofstream verilog_file("output.v");
+        if (!verilog_file) {
+            throw std::runtime_error("Failed to open file for writing");
+        }
+        netlist.emit_verilog(verilog_file, "top");
+        verilog_file.close();
 
-        netlist.emit_verilog(std::cout, "top");
+        std::ofstream dot_file("output.dot");
+        if (!dot_file) {
+            throw std::runtime_error("Failed to open file for writing");
+        }
+        netlist.emit_dotfile(dot_file, "top");
+        dot_file.close();
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
