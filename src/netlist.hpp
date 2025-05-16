@@ -26,6 +26,12 @@ struct Net {
     Port*             driver {nullptr};            
     std::vector<Port*> sinks;
 
+    std::string get_name(int width = 0) const {
+        if (width == 0) return name;
+        if (width - static_cast<int>(std::log10(id)) - 1 < 0) throw std::invalid_argument("Width is too small for ID");
+        return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
+                   + std::to_string(id) + "_";
+    }
     void add_sink(Port* p) { assert(p); sinks.push_back(p); }
 };
 
@@ -65,6 +71,13 @@ struct Module {
             }
         }
     }
+
+    std::string get_name(int width = 0) const {
+        if (width == 0) return spec->name;
+        if (width - static_cast<int>(std::log10(id)) - 1 < 0) throw std::invalid_argument("Width is too small for ID");
+        return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
+                   + std::to_string(id) + "_";
+    }
 };
 
 // -------------------------------------------------- Netlist
@@ -75,9 +88,9 @@ class Netlist {
     
         void    add_random_module();
         void    add_external_net();
-        void    emit_verilog(std::ostream& os, const std::string& top_name = "top", bool include_names = false);
+        void    emit_verilog(std::ostream& os, const std::string& top_name = "top");
         void    print();
-        Net*    make_net(std::string_view name = "");
+        Net*    make_net(std::string name = "");
         Net*    get_net(int id);
 
     private:
@@ -86,10 +99,13 @@ class Netlist {
         Net* get_random_net(NetType net_type);
         void update_combinational_groups(std::set<int>& group);
         void insert_output_buffers();
-        
+        int  get_next_id() { return id_counter++; }
+        int  id_width() const { return static_cast<int>(std::log10(id_counter)) + 1; }
+
         std::vector<std::unique_ptr<Module>> modules;
         std::vector<std::unique_ptr<Net>>    nets;
         std::vector<std::set<int>>           combinational_groups;
         Library& lib;
         std::mt19937_64 rng;
+        int  id_counter {0};
 };

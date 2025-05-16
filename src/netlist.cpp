@@ -43,11 +43,12 @@ void Netlist::add_buffer(Net* net, const ModuleSpec* buffer) {
         throw std::invalid_argument("Buffer must have exactly two ports");
     }
 
-    auto m = std::make_unique<Module>(modules.size(), buffer, &rng);
-    auto ptr = m.get();
-    modules.emplace_back(std::move(m));
+    auto module = std::make_unique<Module>(modules.size(), buffer, &rng);
+    auto module_ptr = module.get();
+    modules.emplace_back(std::move(module));
+    module_ptr->id = get_next_id();
 
-    for (auto& p : ptr->ports) {
+    for (auto& p : module_ptr->ports) {
         if (p->is_input()) {
             p->net = net;
             net->add_sink(p.get());
@@ -83,13 +84,14 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
         throw std::invalid_argument("ModuleSpec cannot be null");
     }
 
-    auto m = std::make_unique<Module>(modules.size(), ms, &rng);
-    auto ptr = m.get();
-    modules.emplace_back(std::move(m));
+    auto module = std::make_unique<Module>(modules.size(), ms, &rng);
+    auto module_ptr = module.get();
+    modules.emplace_back(std::move(module));
+    module_ptr->id = get_next_id();
 
     std::set<int> local_group;
 
-    for (auto& p : ptr->ports) {
+    for (auto& p : module_ptr->ports) {
         if (p->is_output()) {
             auto net = make_net();
             net->net_type = p->net_type;
@@ -106,23 +108,18 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
 
     if (ms->combinational) update_combinational_groups(local_group);
 
-    return ptr;
+    return module_ptr;
 }
 
-Net* Netlist::make_net(std::string_view name) {
-    auto n = std::make_unique<Net>();
-    n->id   = nets.size();
-    n->name = name.empty() ? ("net_" + std::to_string(n->id)) : std::string(name);
-    auto ptr = n.get();
-    nets.emplace_back(std::move(n));
-    return ptr;
+Net* Netlist::make_net(std::string name) {
+    auto net = std::make_unique<Net>();
+    net->id = get_next_id();
+    auto net_ptr = net.get();
+    nets.emplace_back(std::move(net));
+    return net_ptr;
 }
 
-Net* Netlist::get_net(int id)
-{
-    if (id < 0 || id >= static_cast<int>(nets.size())) {
-        throw std::out_of_range("Net ID out of range");
-    }
+Net* Netlist::get_net(int id) {
     return nets[id].get();
 }
 
@@ -144,16 +141,18 @@ void Netlist::update_combinational_groups(std::set<int>& group) {
 
 void Netlist::insert_output_buffers() {
 
-    for (auto& n : nets)
-        if (n->sinks.empty() && n->net_type == NetType::LOGIC)
-            add_buffer(n.get(), lib.get_module("OBUF"));
+    for (auto& net : nets)
+        if (net->sinks.empty() && net->net_type == NetType::LOGIC)
+            add_buffer(net.get(), lib.get_module("OBUF"));
 }
 
-void Netlist::emit_verilog(std::ostream& os, const std::string& top_name, bool include_names) {
+void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) {
     insert_output_buffers();
 
     std::vector<const Net*> ext_in_nets;
     std::vector<const Net*> ext_out_nets;
+
+    int width = id_width();
 
     for (const auto& net : nets) {
         if (net->net_type == NetType::EXT_IN || net->net_type == NetType::EXT_CLK)
@@ -164,24 +163,24 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name, bool i
 
     os << "module " << top_name << "(";
     for (size_t i = 0; i < ext_in_nets.size(); ++i) {
-        os << ext_in_nets[i]->name << (i + 1 < ext_in_nets.size() ? ", " : "");
+        os << ext_in_nets[i]->get_name(width) << (i + 1 < ext_in_nets.size() ? ", " : "");
     }
     if (!ext_out_nets.empty() && !ext_out_nets.empty())
         os << ", ";
     for (size_t i = 0; i < ext_out_nets.size(); ++i) {
-        os << ext_out_nets[i]->name << (i + 1 < ext_out_nets.size() ? ", " : "");
+        os << ext_out_nets[i]->get_name(width) << (i + 1 < ext_out_nets.size() ? ", " : "");
     }
     os << ");\n";
 
 
     for (const auto* net : ext_in_nets)
-        os << "  input " << net->name << ";\n";
+        os << "  input " << net->get_name(width) << ";\n";
     for (const auto* net : ext_out_nets)
-        os << "  output " << net->name << ";\n";
+        os << "  output " << net->get_name(width) << ";\n";
 
     for (const auto& net : nets)
         if (net->net_type == NetType::LOGIC)  
-            os << "  wire " << net->name << ";\n";
+            os << "  wire " << net->get_name(width) << ";\n";
 
     for (const auto& module : modules) {
 
@@ -194,21 +193,17 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name, bool i
                 if ((i + 1) < module->param_values.size())
                     os << ",\n";
             }
-            os << "  )";
-            if (include_names) 
-                os << " ";
+            os << "  ) ";
         } else {
             os << "  " << module->spec->name << " ";
         }
 
-        if (include_names)
-            os << "_" << std::setw(3) << std::setfill('0') << module->id << "_ ";
-
-        os << "(\n";
+        
+        os << "_" << module->get_name(width) << "_ " << "(\n";
 
         for (size_t i = 0; i < module->ports.size(); ++i) {
             auto& port = module->ports[i];
-            os << "    ." << port->spec->name << "(" << port->net->name << ")";
+            os << "    ." << port->spec->name << "(" << port->net->get_name(width) << ")";
             if (i + 1 < module->ports.size())
                 os << ",";
             os << "\n";
@@ -260,7 +255,7 @@ int main() {
 
         netlist.print();
 
-        netlist.emit_verilog(std::cout, "top", true);
+        netlist.emit_verilog(std::cout, "top");
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
