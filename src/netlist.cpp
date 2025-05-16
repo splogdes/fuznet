@@ -1,6 +1,6 @@
 #include "netlist.hpp"
 #include <algorithm>
-#include <iostream>
+#include <iomanip>
 
 Netlist::Netlist(Library& lib, std::optional<std::mt19937_64> rng_opt)
     : lib(lib), rng(rng_opt.value_or(std::mt19937_64(std::random_device{}())))
@@ -43,7 +43,7 @@ void Netlist::add_buffer(Net* net, const ModuleSpec* buffer) {
         throw std::invalid_argument("Buffer must have exactly two ports");
     }
 
-    auto m = std::make_unique<Module>(modules.size(), buffer);
+    auto m = std::make_unique<Module>(modules.size(), buffer, &rng);
     auto ptr = m.get();
     modules.emplace_back(std::move(m));
 
@@ -83,7 +83,7 @@ Module* Netlist::make_module(const ModuleSpec* ms) {
         throw std::invalid_argument("ModuleSpec cannot be null");
     }
 
-    auto m = std::make_unique<Module>(modules.size(), ms);
+    auto m = std::make_unique<Module>(modules.size(), ms, &rng);
     auto ptr = m.get();
     modules.emplace_back(std::move(m));
 
@@ -142,6 +142,83 @@ void Netlist::update_combinational_groups(std::set<int>& group) {
     combinational_groups = std::move(new_groups);
 }
 
+void Netlist::insert_output_buffers() {
+
+    for (auto& n : nets)
+        if (n->sinks.empty() && n->net_type == NetType::LOGIC)
+            add_buffer(n.get(), lib.get_module("OBUF"));
+}
+
+void Netlist::emit_verilog(std::ostream& os, const std::string& top_name, bool include_names) {
+    insert_output_buffers();
+
+    std::vector<const Net*> ext_in_nets;
+    std::vector<const Net*> ext_out_nets;
+
+    for (const auto& net : nets) {
+        if (net->net_type == NetType::EXT_IN || net->net_type == NetType::EXT_CLK)
+            ext_in_nets.push_back(net.get());
+        else if (net->net_type == NetType::EXT_OUT)
+            ext_out_nets.push_back(net.get());
+    }
+
+    os << "module " << top_name << "(";
+    for (size_t i = 0; i < ext_in_nets.size(); ++i) {
+        os << ext_in_nets[i]->name << (i + 1 < ext_in_nets.size() ? ", " : "");
+    }
+    if (!ext_out_nets.empty() && !ext_out_nets.empty())
+        os << ", ";
+    for (size_t i = 0; i < ext_out_nets.size(); ++i) {
+        os << ext_out_nets[i]->name << (i + 1 < ext_out_nets.size() ? ", " : "");
+    }
+    os << ");\n";
+
+
+    for (const auto* net : ext_in_nets)
+        os << "  input " << net->name << ";\n";
+    for (const auto* net : ext_out_nets)
+        os << "  output " << net->name << ";\n";
+
+    for (const auto& net : nets)
+        if (net->net_type == NetType::LOGIC)  
+            os << "  wire " << net->name << ";\n";
+
+    for (const auto& module : modules) {
+
+
+        if (!module->param_values.empty()) {
+            os << "  " << module->spec->name << " #(\n";
+            for (size_t i = 0; i < module->spec->params.size(); ++i) {
+                auto& param = module->spec->params[i];
+                os << "    ." << param.name << "(" << param.width << "'b" << module->param_values.at(param.name) << ")\n";
+                if ((i + 1) < module->param_values.size())
+                    os << ",\n";
+            }
+            os << "  )";
+            if (include_names) 
+                os << " ";
+        } else {
+            os << "  " << module->spec->name << " ";
+        }
+
+        if (include_names)
+            os << "_" << std::setw(3) << std::setfill('0') << module->id << "_ ";
+
+        os << "(\n";
+
+        for (size_t i = 0; i < module->ports.size(); ++i) {
+            auto& port = module->ports[i];
+            os << "    ." << port->spec->name << "(" << port->net->name << ")";
+            if (i + 1 < module->ports.size())
+                os << ",";
+            os << "\n";
+        }
+        os << "  );\n";
+    }
+
+    os << "endmodule\n";
+}
+
 void Netlist::print() {
     printf("Netlist:\n");
     printf("Number of modules: %zu\n", modules.size());
@@ -182,6 +259,8 @@ int main() {
         netlist.add_random_module();
 
         netlist.print();
+
+        netlist.emit_verilog(std::cout, "top", true);
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

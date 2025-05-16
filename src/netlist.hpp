@@ -11,6 +11,7 @@
 #include <random>
 #include <optional>
 #include <set>
+#include <iostream>
 
 using Id = std::size_t;
 
@@ -47,11 +48,21 @@ struct Module {
     Id                  id;
     const ModuleSpec*   spec;
     std::vector<std::unique_ptr<Port>> ports;
+    std::unordered_map<std::string, std::string> param_values;
 
-    explicit Module(Id id_, const ModuleSpec* ms) : id{id_}, spec{ms} {
+    explicit Module(Id id_, const ModuleSpec* ms, std::mt19937_64* rng = nullptr) : id{id_}, spec{ms} {
         for (auto& ps : ms->ports) {
             auto p = std::make_unique<Port>(&ps, this);
             ports.emplace_back(std::move(p));
+        }
+        if (rng) {
+            for (const auto& pspec : ms->params) {
+                std::string value;
+                for (int i = 0; i < pspec.width; ++i) {
+                    value += ((*rng)() % 2) ? '1' : '0';
+                    param_values[pspec.name] = value;
+                }
+            }
         }
     }
 };
@@ -64,6 +75,7 @@ class Netlist {
     
         void    add_random_module();
         void    add_external_net();
+        void    emit_verilog(std::ostream& os, const std::string& top_name = "top", bool include_names = false);
         void    print();
         Net*    make_net(std::string_view name = "");
         Net*    get_net(int id);
@@ -73,6 +85,7 @@ class Netlist {
         Module* make_module(const ModuleSpec* ms);
         Net* get_random_net(NetType net_type);
         void update_combinational_groups(std::set<int>& group);
+        void insert_output_buffers();
         
         std::vector<std::unique_ptr<Module>> modules;
         std::vector<std::unique_ptr<Net>>    nets;
