@@ -17,7 +17,7 @@ IBUF:
 
 BUFG:
   ports:
-    I: { dir: input,  width: 1 }
+    I: { dir: input,  width: 1, type: ext_clk }
     O: { dir: output, width: 1, type: clock }
   params:   {}
   resource: { lc: 1 }
@@ -40,4 +40,5 @@ FDRE:
     R:  { dir: input,  width: 1 }
   params:
     INIT: { type: bin, width: 1 }
+  combinational: false
   resource: { lc: 1 }
