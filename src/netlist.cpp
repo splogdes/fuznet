@@ -1,403 +1,316 @@
 #include "netlist.hpp"
+
 #include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <queue>
+#include <random>
+#include <stdexcept>
 
 std::string Net::get_name(int width) const {
     if (!name.empty()) return name;
-    if (width == 0) return std::string("net_") + std::to_string(id);
-    if (width - static_cast<int>(std::log10(id)) < 0) throw std::invalid_argument("Width is too small for ID");
-    return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
-                + std::to_string(id) + "_";
+    if (width == 0) return "net_" + std::to_string(id);
+    int digits = static_cast<int>(std::log10(id)) + 1;
+    if (width < digits) throw std::invalid_argument("Width too small for ID");
+    return "_" + std::string(width - digits, '0') + std::to_string(id) + "_";
 }
 
 void Net::remove_sink(Port* p) {
     auto it = std::remove(sinks.begin(), sinks.end(), p);
-    if (it != sinks.end()) {
-        sinks.erase(it, sinks.end());
-    }
+    sinks.erase(it, sinks.end());
 }
 
 Module::Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng) : id{id_}, spec{ms} {
-    for (const auto& ps : ms.ports) {
-        auto p = std::make_unique<Port>(ps, this);
-        ports.emplace_back(std::move(p));
-    }
+    for (const auto& ps : ms.ports)
+        ports.emplace_back(std::make_unique<Port>(ps, this));
+
     for (const auto& pspec : ms.params) {
         std::string value;
-        for (size_t i = 0; i < pspec.width; ++i) {
-            value += ((rng)() % 2) ? '1' : '0';
-            param_values[pspec.name] = value;
-        }
+        value.reserve(pspec.width);
+        for (int i = 0; i < pspec.width; ++i)
+            value.push_back((rng() & 1) ? '1' : '0');
+        param_values.emplace(pspec.name, std::move(value));
     }
 }
 
 std::string Module::get_name(int width) const {
     if (width == 0) return spec.name + "_" + std::to_string(id);
-    if (width - static_cast<int>(std::log10(id)) < 0) throw std::invalid_argument("Width is too small for ID");
-    return "_" + std::string(width - static_cast<int>(std::log10(id)) - 1, '0')
-                + std::to_string(id) + "_";
+    int digits = static_cast<int>(std::log10(id)) + 1;
+    if (width < digits) throw std::invalid_argument("Width too small for ID");
+    return "_" + std::string(width - digits, '0') + std::to_string(id) + "_";
 }
 
-Netlist::Netlist(Library& lib, std::mt19937_64& rng)
-    : lib(lib), rng(std::move(rng)) {
+Netlist::Netlist(Library& lib, std::mt19937_64& rng) : lib{lib}, rng{std::move(rng)} {
     Net* input_net = make_net();
     Net* clock_net = make_net();
 
     input_net->net_type = NetType::EXT_IN;
     clock_net->net_type = NetType::EXT_CLK;
-    clock_net->name = "clk";
+    clock_net->name     = "clk";
 
     add_buffer(input_net, lib.get_module("IBUF"));
     add_buffer(clock_net, lib.get_module("BUFG"));
 }
 
+Netlist::~Netlist() = default;
 
 void Netlist::add_external_net() {
-    auto ext_in = make_net();
+    Net* ext_in = make_net();
     ext_in->net_type = NetType::EXT_IN;
     add_buffer(ext_in, lib.get_module("IBUF"));
 }
-
 
 void Netlist::add_random_module() {
     const ModuleSpec& ms = lib.random_module();
     make_module(ms);
 }
 
-
 void Netlist::switch_up() {
-    for (auto& module : modules) {
+    for (auto& mod : modules) {
+        std::set<int> comb_nets = get_combinational_group(mod.get());
+        std::vector<Net*> switchable;
+        for (auto& net : nets)
+            if (net->net_type == NetType::LOGIC && comb_nets.count(net->id) == 0)
+                switchable.push_back(net.get());
 
-        std::set<int> comb_nets = get_combinational_group(module.get());
-        std::vector<Net*> switchable_nets;
-        for (const auto& net : nets)
-            if (net->net_type == NetType::LOGIC && comb_nets.find(net->id) == comb_nets.end())
-                switchable_nets.push_back(net.get());
-            
-        if (switchable_nets.empty()) continue;
+        if (switchable.empty()) continue;
 
-        
-        for (const auto& port : module->ports) {
+        std::uniform_int_distribution<std::size_t> dist(0, switchable.size() - 1);
+
+        for (auto& port : mod->ports)
             if (port->is_input() && port->net_type == NetType::LOGIC) {
-                std::uniform_int_distribution<int> dist(0, switchable_nets.size() - 1);
-                int idx = dist(rng);
-                Net* net = switchable_nets[idx];
+                Net* new_net = switchable[dist(rng)];
                 port->net->remove_sink(port.get());
-                port->net = net;
-                net->add_sink(port.get());
+                port->net = new_net;
+                new_net->add_sink(port.get());
             }
-        }
     }
-}
-
-
-void Netlist::add_buffer(Net* net, const ModuleSpec& buffer) {
-
-    if (buffer.ports.size() != 2) {
-        throw std::invalid_argument("Buffer must have exactly two ports");
-    }
-
-    auto module = std::make_unique<Module>(modules.size(), buffer, rng);
-    auto module_ptr = module.get();
-    modules.emplace_back(std::move(module));
-    module_ptr->id = get_next_id();
-
-    for (auto& p : module_ptr->ports) {
-        if (p->is_input()) {
-            p->net = net;
-            net->add_sink(p.get());
-        } else if (p->is_output()) {
-            Net* output_net = make_net();
-            output_net->net_type = p->net_type;
-            p->net = output_net;
-            output_net->driver = p.get();
-        }
-    }
-}
-
-Net* Netlist::get_random_net(NetType type) {
-    std::vector<Net*> filtered_nets;
-    for (const auto& net : nets) {
-        if (net->net_type == type) {
-            filtered_nets.push_back(net.get());
-        }
-    }
-    if (filtered_nets.empty()) {
-        throw std::runtime_error("No nets of the specified type found");
-    }
-    std::uniform_int_distribution<int> dist(0, filtered_nets.size() - 1);
-    int idx = dist(rng);
-    return filtered_nets[idx];
-}
-
-Module* Netlist::make_module(const ModuleSpec& ms) {
-
-    auto module = std::make_unique<Module>(modules.size(), ms, rng);
-    auto module_ptr = module.get();
-    modules.emplace_back(std::move(module));
-    module_ptr->id = get_next_id();
-
-    std::vector<Port*> output_ports;
-
-    for (auto& p : module_ptr->ports) {
-        if (p->is_output()) {
-            output_ports.push_back(p.get());
-        } else if (p->is_input()) {
-            auto net = get_random_net(p->net_type);
-            p->net = net;
-            net->add_sink(p.get());
-        }
-    }
-
-    for (auto& p : output_ports) {
-            auto net = make_net();
-            net->net_type = p->net_type;
-            p->net = net;
-            net->driver = p;
-    }
-
-    return module_ptr;
-}
-
-Net* Netlist::make_net(std::string name) {
-    auto net = std::make_unique<Net>();
-    net->id = get_next_id();
-    auto net_ptr = net.get();
-    nets.emplace_back(std::move(net));
-    return net_ptr;
-}
-
-Net* Netlist::get_net(int id) {
-    for (const auto& net : nets) {
-        if (net->id == id) {
-            return net.get();
-        }
-    }
-    throw std::runtime_error("Net with the specified ID not found");
-}
-
-std::set<int> Netlist::get_combinational_group(Module* module) {
-    std::set<int> group;
-    std::queue<Net*> queue;
-    for (const auto& port : module->ports) {
-        if (port->is_output() && port->net_type != NetType::CLK) {
-            queue.push(port->net);
-        }
-    }
-
-    while (!queue.empty()) {
-        Net* current = queue.front();
-        queue.pop();
-        if (group.find(current->id) != group.end()) continue;
-        group.insert(current->id);
-        for (const auto& sink : current->sinks) {
-            if (!sink->parent ||
-                !sink->parent->spec.combinational) 
-                continue;
-            for (const auto& port : sink->parent->ports)
-                if (port->is_output() && port->net_type != NetType::CLK)
-                    queue.push(port->net);
-        }
-    }
-
-    return group;
 }
 
 void Netlist::insert_output_buffers() {
     std::vector<Net*> targets;
-
     for (auto& net : nets)
         if (net->sinks.empty() && net->net_type == NetType::LOGIC)
             targets.push_back(net.get());
+    for (Net* n : targets)
+        add_buffer(n, lib.get_module("OBUF"));
+}
 
-    for (auto& net : targets)
-        add_buffer(net, lib.get_module("OBUF"));
+void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buf_spec) {
+    if (buf_spec.ports.size() != 2)
+        throw std::invalid_argument("Buffer must have exactly two ports");
 
+    auto buf_mod = std::make_unique<Module>(modules.size(), buf_spec, rng);
+    Module* m = buf_mod.get();
+    m->id = get_next_id();
+    modules.push_back(std::move(buf_mod));
+
+    for (auto& p : m->ports)
+        if (p->is_input()) {
+            p->net = drive_net;
+            drive_net->add_sink(p.get());
+        } else {
+            Net* out_net = make_net();
+            out_net->net_type = p->net_type;
+            p->net = out_net;
+            out_net->driver = p.get();
+        }
+}
+
+Module* Netlist::make_module(const ModuleSpec& ms) {
+    auto mod = std::make_unique<Module>(modules.size(), ms, rng);
+    Module* m = mod.get();
+    m->id = get_next_id();
+    modules.push_back(std::move(mod));
+
+    std::vector<Port*> outputs;
+    for (auto& p : m->ports)
+        if (p->is_output())
+            outputs.push_back(p.get());
+        else {
+            Net* src = get_random_net(p->net_type);
+            p->net = src;
+            src->add_sink(p.get());
+        }
+
+    for (Port* p : outputs) {
+        Net* net = make_net();
+        net->net_type = p->net_type;
+        p->net = net;
+        net->driver = p;
+    }
+    return m;
+}
+
+Net* Netlist::get_random_net(NetType t) {
+    std::vector<Net*> pool;
+    for (auto& net : nets)
+        if (net->net_type == t) pool.push_back(net.get());
+    if (pool.empty()) throw std::runtime_error("No nets of requested type");
+    std::uniform_int_distribution<std::size_t> dist(0, pool.size() - 1);
+    return pool[dist(rng)];
+}
+
+std::set<int> Netlist::get_combinational_group(Module* seed) {
+    std::set<int> group;
+    std::queue<Net*> q;
+    for (auto& p : seed->ports)
+        if (p->is_output() && p->net_type != NetType::CLK)
+            q.push(p->net);
+    while (!q.empty()) {
+        Net* cur = q.front();
+        q.pop();
+        if (!group.insert(cur->id).second) continue;
+        for (Port* sink : cur->sinks) {
+            if (!sink->parent || !sink->parent->spec.combinational) continue;
+            for (auto& p : sink->parent->ports)
+                if (p->is_output() && p->net_type != NetType::CLK)
+                    q.push(p->net);
+        }
+    }
+    return group;
+}
+
+Net* Netlist::make_net(std::string explicit_name) {
+    auto n = std::make_unique<Net>();
+    n->id = get_next_id();
+    n->name = std::move(explicit_name);
+    Net* ptr = n.get();
+    nets.push_back(std::move(n));
+    return ptr;
+}
+
+Net* Netlist::get_net(int id) {
+    for (auto& net : nets)
+        if (net->id == id) return net.get();
+    throw std::runtime_error("Net not found");
 }
 
 void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const {
-
-    std::vector<const Net*> ext_in_nets;
-    std::vector<const Net*> ext_out_nets;
-
-    int width = id_width();
-
-    for (const auto& net : nets) {
-        if (net->net_type == NetType::EXT_IN || net->net_type == NetType::EXT_CLK)
-            ext_in_nets.push_back(net.get());
-        else if (net->net_type == NetType::EXT_OUT)
-            ext_out_nets.push_back(net.get());
+    std::vector<const Net*> ext_in, ext_out;
+    for (const auto& n : nets) {
+        if (n->net_type == NetType::EXT_IN || n->net_type == NetType::EXT_CLK)
+            ext_in.push_back(n.get());
+        else if (n->net_type == NetType::EXT_OUT)
+            ext_out.push_back(n.get());
     }
+
+    int w = id_width();
 
     os << "module " << top_name << "(";
-    for (size_t i = 0; i < ext_in_nets.size(); ++i) {
-        os << ext_in_nets[i]->get_name(width) << (i + 1 < ext_in_nets.size() ? ", " : "");
-    }
-    if (!ext_out_nets.empty() && !ext_out_nets.empty())
-        os << ", ";
-    for (size_t i = 0; i < ext_out_nets.size(); ++i) {
-        os << ext_out_nets[i]->get_name(width) << (i + 1 < ext_out_nets.size() ? ", " : "");
-    }
+    for (size_t i = 0; i < ext_in.size(); ++i)
+        os << ext_in[i]->get_name(w) << (i + 1 < ext_in.size() ? ", " : "");
+    if (!ext_out.empty()) os << ", ";
+    for (size_t i = 0; i < ext_out.size(); ++i)
+        os << ext_out[i]->get_name(w) << (i + 1 < ext_out.size() ? ", " : "");
     os << ");\n";
 
+    for (auto* n : ext_in)  os << "  input  " << n->get_name(w) << ";\n";
+    for (auto* n : ext_out) os << "  output " << n->get_name(w) << ";\n";
 
-    for (const auto* net : ext_in_nets)
-        os << "  input " << net->get_name(width) << ";\n";
-    for (const auto* net : ext_out_nets)
-        os << "  output " << net->get_name(width) << ";\n";
+    for (const auto& n : nets)
+        if (n->net_type == NetType::LOGIC)
+            os << "  wire   " << n->get_name(w) << ";\n";
 
-    for (const auto& net : nets)
-        if (net->net_type == NetType::LOGIC)
-            os << "  wire " << net->get_name(width) << ";\n";
-
-    for (const auto& module : modules) {
-
-
-        if (!module->param_values.empty()) {
-            os << "  " << module->spec.name << " #(\n";
-            for (size_t i = 0; i < module->spec.params.size(); ++i) {
-                auto& param = module->spec.params[i];
-                os << "    ." << param.name << "(" << param.width << "'b" << module->param_values.at(param.name) << ")\n";
-                if ((i + 1) < module->param_values.size())
-                    os << ",\n";
+    for (const auto& m : modules) {
+        if (!m->param_values.empty()) {
+            os << "  " << m->spec.name << " #(\n";
+            for (size_t i = 0; i < m->spec.params.size(); ++i) {
+                const auto& ps = m->spec.params[i];
+                os << "    ." << ps.name << "(" << ps.width << "'b" << m->param_values.at(ps.name) << ")";
+                if (i + 1 < m->spec.params.size()) os << ",";
+                os << "\n";
             }
             os << "  ) ";
         } else {
-            os << "  " << module->spec.name << " ";
+            os << "  " << m->spec.name << " ";
         }
 
-        os << module->get_name(width) << " (\n";
-
-        for (size_t i = 0; i < module->ports.size(); ++i) {
-            auto& port = module->ports[i];
-            os << "    ." << port->spec.name << "(" << port->net->get_name(width) << ")";
-            if (i + 1 < module->ports.size())
-                os << ",";
+        os << m->get_name(w) << " (\n";
+        for (size_t i = 0; i < m->ports.size(); ++i) {
+            const auto& p = m->ports[i];
+            os << "    ." << p->spec.name << "(" << p->net->get_name(w) << ")";
+            if (i + 1 < m->ports.size()) os << ",";
             os << "\n";
         }
         os << "  );\n";
     }
-
     os << "endmodule\n";
 }
 
 void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const {
     os << "digraph " << top_name << " {\n";
     os << "  rankdir=LR;\n";
-    for (const auto& module : modules) {
-        os << "  " << module->get_name() << " [shape=record,";
-        std::vector<std::string> input_ports;
-        std::vector<std::string> output_ports;
-        for (const auto& port : module->ports) {
-            if (port->is_input()) {
-                input_ports.push_back(port->spec.name);
-            } else if (port->is_output()) {
-                output_ports.push_back(port->spec.name);
-            }
+
+    for (const auto& m : modules) {
+        std::vector<std::string> ins, outs;
+        for (const auto& p : m->ports)
+            (p->is_input() ? ins : outs).push_back(p->spec.name);
+
+        os << "  " << m->get_name() << " [shape=record, label=\"{{";
+        for (size_t i = 0; i < ins.size(); ++i) {
+            os << "<" << ins[i] << "> " << ins[i];
+            if (i + 1 < ins.size()) os << " | ";
         }
-        os << " label=\"{{";
-        for (size_t i = 0; i < input_ports.size(); ++i) {
-            os << " <" << input_ports[i] << "> " << input_ports[i];
-            if (i + 1 < input_ports.size()) os << " |";
+        os << "} | " << m->spec.name << " | {";
+        for (size_t i = 0; i < outs.size(); ++i) {
+            os << "<" << outs[i] << "> " << outs[i];
+            if (i + 1 < outs.size()) os << " | ";
         }
-        os << "}| " << module->spec.name << " | {";
-        for (size_t i = 0; i < output_ports.size(); ++i) {
-            os << " <" << output_ports[i] << "> " << output_ports[i];
-            if (i + 1 < output_ports.size()) os << " |";
-        }
-        os << "}}\"";
-        os << "];\n";
-    }
-    for (const auto& net : nets) {
-        if (net->net_type == NetType::EXT_IN || net->net_type == NetType::EXT_CLK) {
-            os << "  " << net->get_name() << " [shape=octagon, label=\"" << net->get_name() << "\"];\n";
-            for (const auto& sink : net->sinks) {
-                os << "  " << net->get_name() << ":e -> " << sink->parent->get_name() << ":<" << sink->spec.name << ">;\n";
-            }
-        } else if (net->net_type == NetType::EXT_OUT) {
-            os << "  " << net->get_name() << " [shape=octagon, label=\"" << net->get_name() << "\"];\n";
-            os << "  " << net->driver->parent->get_name() << ":<" << net->driver->spec.name << "> -> "
-               << net->get_name() << ";\n";
-        } else {
-            os << "  " << net->get_name() << " [shape=diamond, label=\"" << net->get_name() << "\"];\n";
-            auto driver = net->driver;
-            os << "  " << driver->parent->get_name() << ":<" << driver->spec.name << "> -> "
-               << net->get_name() << ":w ;\n";
-            for (const auto& sink : net->sinks) {
-                os << "  " << net->get_name() << ":e -> " << sink->parent->get_name()
-                   << ":<" << sink->spec.name << ">;\n";
-            }
-        }
+        os << "}}\"];\n";
     }
 
+    for (const auto& n : nets) {
+        const std::string n_label = n->get_name();
+        auto emit_edge = [&](const std::string& src, const std::string& dst) {
+            os << "  " << src << " -> " << dst << ";\n";
+        };
+
+        switch (n->net_type) {
+            case NetType::EXT_IN:
+            case NetType::EXT_CLK:
+                os << "  " << n_label << " [shape=octagon, label=\"" << n_label << "\"];\n";
+                for (Port* s : n->sinks)
+                    emit_edge(n_label, s->parent->get_name() + ":<" + s->spec.name + ">");
+                break;
+
+            case NetType::EXT_OUT:
+                os << "  " << n_label << " [shape=octagon, label=\"" << n_label << "\"];\n";
+                emit_edge(n->driver->parent->get_name() + ":<" + n->driver->spec.name + ">", n_label);
+                break;
+
+            default:
+                os << "  " << n_label << " [shape=diamond, label=\"" << n_label << "\"];\n";
+                emit_edge(n->driver->parent->get_name() + ":<" + n->driver->spec.name + ">", n_label + ":w");
+                for (Port* s : n->sinks)
+                    emit_edge(n_label + ":e", s->parent->get_name() + ":<" + s->spec.name + ">");
+                break;
+        }
+    }
     os << "}\n";
 }
 
-
 void Netlist::print() const {
-    printf("Netlist:\n");
-    printf("Number of modules: %zu\n", modules.size());
-    printf("Number of nets: %zu\n", nets.size());
+    std::cout << "Netlist:\n"
+              << "  modules : " << modules.size() << '\n'
+              << "  nets    : " << nets.size() << '\n';
+
     for (const auto& m : modules) {
-        printf("Module ID: %zu, Name: %s\n", m->id, m->spec.name.c_str());
+        std::cout << "Module #" << m->id << " (" << m->spec.name << ")\n";
         for (const auto& p : m->ports) {
-            printf("  Port: %s, I/O: %s, Type: %d, Net: %d, Type: %d\n", p->spec.name.c_str(), p->is_input() ? "Input" : "Output",
-                   p->net_type, p->net->id, p->net->net_type);
+            std::cout << "    "
+                      << (p->is_input() ? "in  " : "out ")
+                      << std::setw(10) << p->spec.name
+                      << "  net " << std::setw(3) << p->net->id
+                      << " (" << static_cast<int>(p->net_type) << ")\n";
         }
     }
-    for (const auto& n : nets) {
-        printf("Net ID: %zu, Name: %s\n", n->id, n->get_name().c_str());
-    }
-    for (const auto& group : combinational_groups) {
-        printf("Combinational group: ");
-        for (const auto& id : group) {
-            printf("%d ", id);
-        }
-        printf("\n");
+
+    for (const auto& g : combinational_groups) {
+        std::cout << "  comb group:";
+        for (int id : g) std::cout << ' ' << id;
+        std::cout << '\n';
     }
 }
-
-Netlist::~Netlist() {}
-
-#define NETLIST_TEST
-#ifdef NETLIST_TEST
-#include <fstream>
-
-int main() {
-    try {
-        std::mt19937_64 rng;
-        rng.seed(32);
-        Library lib("/home/splogdes/Documents/UNI/PNR/fuznet/src/lib.yaml", rng);
-        Netlist netlist(lib, rng);
-        netlist.add_random_module();
-        netlist.add_external_net();
-        for (int i = 0; i < 4; ++i) {
-            netlist.add_random_module();
-        }
-        netlist.switch_up();
-        netlist.insert_output_buffers();
-
-        netlist.print();
-
-        std::ofstream verilog_file("output.v");
-        if (!verilog_file) {
-            throw std::runtime_error("Failed to open file for writing");
-        }
-        netlist.emit_verilog(verilog_file, "top");
-        verilog_file.close();
-
-        std::ofstream dot_file("output.dot");
-        if (!dot_file) {
-            throw std::runtime_error("Failed to open file for writing");
-        }
-        netlist.emit_dotfile(dot_file, "top");
-        dot_file.close();
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
-}
-#endif
