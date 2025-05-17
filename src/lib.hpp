@@ -9,14 +9,14 @@
 class Library {
 
     public:
-        Library(const std::string& filename, std::optional<std::mt19937_64> rng_opt = std::nullopt);
-        ModuleSpec* random_module();
-        ModuleSpec* get_module(const std::string& name);
+        Library(const std::string& filename, std::mt19937_64& rng);
+        const ModuleSpec& random_module() const;
+        const ModuleSpec& get_module(const std::string& name) const;
     
     private:
         std::unordered_map<std::string,ModuleSpec> modules;
         std::vector<std::string> module_names;
         std::vector<int> module_weights;
-        std::mt19937_64 rng;
+        mutable std::mt19937_64 rng;
 
 };

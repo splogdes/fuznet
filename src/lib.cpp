@@ -1,14 +1,9 @@
 #include "lib.hpp"
 #include <yaml-cpp/yaml.h>
 
-Library::Library(const std::string& filename, std::optional<std::mt19937_64> rng_opt) {
+Library::Library(const std::string& filename, std::mt19937_64& rng) {
     
-    if (rng_opt) {
-        this->rng = *rng_opt;
-    } else {
-        std::random_device rd;
-        this->rng = std::mt19937_64(rd());
-    }
+    this->rng = std::move(rng);
 
     YAML::Node root = YAML::LoadFile(filename);
     
@@ -34,21 +29,28 @@ Library::Library(const std::string& filename, std::optional<std::mt19937_64> rng
             p.name = port_name;
             p.width = port_width;
 
-            switch (port_dir[0]) {
-                case 'i': p.port_dir = PortDir::INPUT; break;
-                case 'o': p.port_dir = PortDir::OUTPUT; break;
-                default: throw std::runtime_error(
+            if (port_dir == "input") {
+                p.port_dir = PortDir::INPUT;
+            } else if (port_dir == "output") {
+                p.port_dir = PortDir::OUTPUT;
+            } else {
+                throw std::runtime_error(
                     "Invalid port direction, Module: " + name + ", Port: " + port_name + ", Direction: " + port_dir
                 );
             }
 
-            switch (port_net_type[0]) {
-                case 'c': p.net_type = NetType::CLK; break;
-                case 'e': p.net_type = NetType::EXT_CLK; break;
-                case 'o': p.net_type = NetType::EXT_OUT; break;
-                case 'i': p.net_type = NetType::EXT_IN; break;
-                case 'l': p.net_type = NetType::LOGIC; break;
-                default: throw std::runtime_error(
+            if (port_net_type == "clk") {
+                p.net_type = NetType::CLK;
+            } else if (port_net_type == "ext_clk") {
+                p.net_type = NetType::EXT_CLK;
+            } else if (port_net_type == "ext_out") {
+                p.net_type = NetType::EXT_OUT;
+            } else if (port_net_type == "ext_in") {
+                p.net_type = NetType::EXT_IN;
+            } else if (port_net_type == "logic") {
+                p.net_type = NetType::LOGIC;
+            } else {
+                throw std::runtime_error(
                     "Invalid net type, Module: " + name + ", Port: " + port_name + ", Type: " + port_net_type
                 );
             }
@@ -57,19 +59,21 @@ Library::Library(const std::string& filename, std::optional<std::mt19937_64> rng
 
         }
 
-        for (const auto& param_entry : node["params"]) {
-            ParamSpec p;
+        if (node["params"]) {
+            for (const auto& param_entry : node["params"]) {
+                ParamSpec p;
 
-            const std::string& param_name = param_entry.first.as<std::string>();
+                const std::string& param_name = param_entry.first.as<std::string>();
 
-            const YAML::Node& param = param_entry.second;
+                const YAML::Node& param = param_entry.second;
 
-            const int param_width = param["width"].as<int>();
+                const int param_width = param["width"].as<int>();
 
-            p.name = param_name;
-            p.width = param_width;
+                p.name = param_name;
+                p.width = param_width;
 
-            m.params.push_back(p);
+                m.params.push_back(p);
+            }
         }
 
         m.combinational = node["combinational"].as<bool>(true);
@@ -85,22 +89,22 @@ Library::Library(const std::string& filename, std::optional<std::mt19937_64> rng
     }
 }
 
-ModuleSpec* Library::get_module(const std::string& name) {
+const ModuleSpec& Library::get_module(const std::string& name) const {
     auto it = modules.find(name);
     if (it != modules.end()) {
-        return &it->second;
+        return it->second;
     } else {
         throw std::runtime_error("Module not found: " + name);
     }
 }
 
-ModuleSpec* Library::random_module() {
+const ModuleSpec& Library::random_module() const {
     std::discrete_distribution<int> dist(module_weights.begin(), module_weights.end());
     int idx = dist(rng);
     std::string name = module_names[idx];
     auto it = modules.find(name);
     if (it != modules.end()) {
-        return &it->second;
+        return it->second;
     } else {
         throw std::runtime_error("Module not found: " + name);
     }
@@ -111,14 +115,14 @@ ModuleSpec* Library::random_module() {
 
 int main() {
     try {
-        std::optional<std::mt19937_64> rng_opt = std::nullopt;
-        Library lib("src/lib.yaml");
+        std::mt19937_64 rng = std::mt19937_64(32);
+        Library lib("src/lib.yaml", rng);
         
-        ModuleSpec* module = lib.random_module();
+        const ModuleSpec& module = lib.random_module();
 
-        std::cout << "Random module name: " << module->name << std::endl;
+        std::cout << "Random module name: " << module.name << std::endl;
 
-        for (const auto& port : module->ports) {
+        for (const auto& port : module.ports) {
             std::cout << "Port name: " << port.name 
                       << ", Direction: " 
                       << (port.port_dir == PortDir::INPUT ? "INPUT" : "OUTPUT") 
@@ -130,21 +134,21 @@ int main() {
                       << std::endl;
         }
 
-        for (const auto& param : module->params) {
+        for (const auto& param : module.params) {
             std::cout << "Param name: " << param.name
                       << ", Width: " << param.width 
                       << std::endl;
         }
 
-        for (const auto& resource : module->resource) {
+        for (const auto& resource : module.resource) {
             std::cout << "Resource name: " << resource.first 
                       << ", Count: " << resource.second 
                       << std::endl;
         }
 
 
-        std::cout << "Combinational: " << (module->combinational ? "true" : "false") << std::endl;
-        std::cout << "Weight: " << module->weight << std::endl;
+        std::cout << "Combinational: " << (module.combinational ? "true" : "false") << std::endl;
+        std::cout << "Weight: " << module.weight << std::endl;
 
     } catch (const std::exception& e) { 
         std::cerr << "Error: " << e.what() << std::endl;

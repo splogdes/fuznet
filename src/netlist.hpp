@@ -12,6 +12,8 @@
 #include <optional>
 #include <set>
 #include <iostream>
+#include <cmath>
+
 
 using Id = std::size_t;
 
@@ -33,49 +35,49 @@ struct Net {
 
 // -------------------------------------------------- Port
 struct Port {
-    const PortSpec* spec;
+    const PortSpec& spec;
     Module*     parent {nullptr};
     Net*        net    {nullptr};
     NetType     net_type;
 
-    Port(const PortSpec* s, Module* mod)
-        : spec{s}, parent{mod}, net_type{s->net_type} {}
+    Port(const PortSpec& s, Module* mod)
+        : spec{s}, parent{mod}, net_type{s.net_type} {}
 
-    bool is_input()  const { return spec->port_dir == PortDir::INPUT;  }
-    bool is_output() const { return spec->port_dir == PortDir::OUTPUT; }
+    bool is_input()  const { return spec.port_dir == PortDir::INPUT;  }
+    bool is_output() const { return spec.port_dir == PortDir::OUTPUT; }
 };
 
 // -------------------------------------------------- Module
 struct Module {
     Id                  id;
-    const ModuleSpec*   spec;
+    const ModuleSpec&   spec;
     std::vector<std::unique_ptr<Port>> ports;
     std::unordered_map<std::string, std::string> param_values;
 
-    explicit Module(Id id_, const ModuleSpec* ms, std::mt19937_64* rng = nullptr);
+    explicit Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng);
     std::string get_name(int width = 0) const;
 };
 
 // -------------------------------------------------- Netlist
 class Netlist {
     public:
-        Netlist(Library& lib, std::optional<std::mt19937_64> rng_opt  = std::nullopt);
+        Netlist(Library& lib, std::mt19937_64& rng);
         ~Netlist();
     
         void    add_random_module();
         void    add_external_net();
-        void    switch_port_connection();
+        void    switch_up();
         void    insert_output_buffers();
-        void    emit_verilog(std::ostream& os, const std::string& top_name = "top");
-        void    emit_dotfile(std::ostream& os, const std::string& top_name = "top");
-        void    print();
+        void    emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
+        void    emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
+        void    print() const;
         Net*    make_net(std::string name = "");
         
-        private:
-        void add_buffer(Net* net, const ModuleSpec* buffer);
+    private:
+        void add_buffer(Net* net, const ModuleSpec& buffer);
         Net* get_random_net(NetType net_type);
-        std::set<int> get_combinational_group(Net* net);
-        Module* make_module(const ModuleSpec* ms);
+        std::set<int> get_combinational_group(Module* module);
+        Module* make_module(const ModuleSpec& ms);
         int  get_next_id() { return id_counter++; }
         int  id_width() const { return static_cast<int>(std::log10(id_counter)) + 1; }
         Net*    get_net(int id);
