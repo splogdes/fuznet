@@ -21,11 +21,7 @@ Library::Library(const std::string& filename, std::mt19937_64& r)
             const std::string dir  = port["dir"].as<std::string>();
             p.width                = port["width"].as<int>();
             const std::string type = port["type"].as<std::string>("logic");
-
-            if      (dir == "input")  p.port_dir = PortDir::INPUT;
-            else if (dir == "output") p.port_dir = PortDir::OUTPUT;
-            else throw std::runtime_error("Invalid port direction: " + dir);
-
+            
             if      (type == "clk")      p.net_type = NetType::CLK;
             else if (type == "ext_clk")  p.net_type = NetType::EXT_CLK;
             else if (type == "ext_out")  p.net_type = NetType::EXT_OUT;
@@ -33,7 +29,13 @@ Library::Library(const std::string& filename, std::mt19937_64& r)
             else if (type == "logic")    p.net_type = NetType::LOGIC;
             else throw std::runtime_error("Invalid net type: " + type);
 
-            m.ports.push_back(p);
+            if (dir == "input") {
+                p.port_dir = PortDir::INPUT;
+                m.input_ports.push_back(p);
+            } else if (dir == "output") {
+                p.port_dir = PortDir::OUTPUT;
+                m.output_ports.push_back(p);
+            } else throw std::runtime_error("Invalid port direction: " + dir);
         }
 
         if (node["params"])

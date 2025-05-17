@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-enum class PortDir { INPUT, OUTPUT, INOUT };
+enum class PortDir { INPUT, OUTPUT };
 enum class NetType { EXT_CLK, CLK, EXT_IN, EXT_OUT, LOGIC };
 
 struct PortSpec {
@@ -22,7 +22,8 @@ struct ParamSpec {
 
 struct ModuleSpec {
     std::string                           name;
-    std::vector<PortSpec>                 ports;
+    std::vector<PortSpec>                 input_ports;
+    std::vector<PortSpec>                 output_ports;
     std::vector<ParamSpec>                params;
     bool                                  combinational;
     int                                   weight;

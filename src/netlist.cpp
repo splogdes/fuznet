@@ -23,8 +23,11 @@ void Net::remove_sink(Port* p) {
 }
 
 Module::Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng) : id{id_}, spec{ms} {
-    for (const auto& ps : ms.ports)
-        ports.emplace_back(std::make_unique<Port>(ps, this));
+    for (const auto& ps : ms.input_ports)
+        input_ports.emplace_back(std::make_unique<Port>(ps, this));
+
+    for (const auto& ps : ms.output_ports)
+        output_ports.emplace_back(std::make_unique<Port>(ps, this));
 
     for (const auto& pspec : ms.params) {
         std::string value;
@@ -79,8 +82,8 @@ void Netlist::switch_up() {
 
         std::uniform_int_distribution<std::size_t> dist(0, switchable.size() - 1);
 
-        for (auto& port : mod->ports)
-            if (port->is_input() && port->net_type == NetType::LOGIC) {
+        for (auto& port : mod->input_ports)
+            if (port->net_type == NetType::LOGIC) {
                 Net* new_net = switchable[dist(rng)];
                 port->net->remove_sink(port.get());
                 port->net = new_net;
@@ -99,7 +102,7 @@ void Netlist::insert_output_buffers() {
 }
 
 void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buf_spec) {
-    if (buf_spec.ports.size() != 2)
+    if (buf_spec.input_ports.size() != 1 && buf_spec.output_ports.size() != 1)
         throw std::invalid_argument("Buffer must have exactly two ports");
 
     auto buf_mod = std::make_unique<Module>(modules.size(), buf_spec, rng);
@@ -107,16 +110,15 @@ void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buf_spec) {
     m->id = get_next_id();
     modules.push_back(std::move(buf_mod));
 
-    for (auto& p : m->ports)
-        if (p->is_input()) {
-            p->net = drive_net;
-            drive_net->add_sink(p.get());
-        } else {
-            Net* out_net = make_net();
-            out_net->net_type = p->net_type;
-            p->net = out_net;
-            out_net->driver = p.get();
-        }
+    auto& p_in = m->input_ports[0];  
+    p_in->net = drive_net;
+    drive_net->add_sink(p_in.get());
+
+    auto& p_out = m->output_ports[0];
+    Net* out_net = make_net();
+    out_net->net_type = p_out->net_type;
+    p_out->net = out_net;
+    out_net->driver = p_out.get();
 }
 
 Module* Netlist::make_module(const ModuleSpec& ms) {
@@ -126,21 +128,20 @@ Module* Netlist::make_module(const ModuleSpec& ms) {
     modules.push_back(std::move(mod));
 
     std::vector<Port*> outputs;
-    for (auto& p : m->ports)
-        if (p->is_output())
-            outputs.push_back(p.get());
-        else {
-            Net* src = get_random_net(p->net_type);
-            p->net = src;
-            src->add_sink(p.get());
-        }
 
-    for (Port* p : outputs) {
+    for (const auto& p : m->input_ports) {
+        Net* src = get_random_net(p->net_type);
+        p->net = src;
+        src->add_sink(p.get());
+    }
+
+    for (const auto& p : m->output_ports) {
         Net* net = make_net();
         net->net_type = p->net_type;
         p->net = net;
-        net->driver = p;
+        net->driver = p.get();
     }
+
     return m;
 }
 
@@ -156,17 +157,19 @@ Net* Netlist::get_random_net(NetType t) {
 std::set<int> Netlist::get_combinational_group(Module* seed) {
     std::set<int> group;
     std::queue<Net*> q;
-    for (auto& p : seed->ports)
-        if (p->is_output() && p->net_type != NetType::CLK)
+
+    for (auto& p : seed->output_ports)
+        if (p->net_type != NetType::CLK)
             q.push(p->net);
+
     while (!q.empty()) {
         Net* cur = q.front();
         q.pop();
         if (!group.insert(cur->id).second) continue;
         for (Port* sink : cur->sinks) {
             if (!sink->parent || !sink->parent->spec.combinational) continue;
-            for (auto& p : sink->parent->ports)
-                if (p->is_output() && p->net_type != NetType::CLK)
+            for (auto& p : sink->parent->output_ports)
+                if (p->net_type != NetType::CLK)
                     q.push(p->net);
         }
     }
@@ -229,10 +232,15 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const 
         }
 
         os << m->get_name(w) << " (\n";
-        for (size_t i = 0; i < m->ports.size(); ++i) {
-            const auto& p = m->ports[i];
+
+        std::vector<Port*> all_ports;
+        for (const auto& p : m->input_ports) all_ports.push_back(p.get());
+        for (const auto& p : m->output_ports) all_ports.push_back(p.get());
+        
+        for (size_t i = 0; i < all_ports.size(); ++i) {
+            const Port* p = all_ports[i];
             os << "    ." << p->spec.name << "(" << p->net->get_name(w) << ")";
-            if (i + 1 < m->ports.size()) os << ",";
+            if (i + 1 < all_ports.size()) os << ",";
             os << "\n";
         }
         os << "  );\n";
@@ -246,8 +254,8 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const 
 
     for (const auto& m : modules) {
         std::vector<std::string> ins, outs;
-        for (const auto& p : m->ports)
-            (p->is_input() ? ins : outs).push_back(p->spec.name);
+        for (const auto& p : m->input_ports) ins.push_back(p->spec.name);
+        for (const auto& p : m->output_ports) outs.push_back(p->spec.name);
 
         os << "  " << m->get_name() << " [shape=record, label=\"{{";
         for (size_t i = 0; i < ins.size(); ++i) {
@@ -299,13 +307,16 @@ void Netlist::print() const {
 
     for (const auto& m : modules) {
         std::cout << "Module #" << m->id << " (" << m->spec.name << ")\n";
-        for (const auto& p : m->ports) {
-            std::cout << "    "
-                      << (p->is_input() ? "in  " : "out ")
+        for (const auto& p : m->input_ports)
+            std::cout << "    in  "
                       << std::setw(10) << p->spec.name
                       << "  net " << std::setw(3) << p->net->id
                       << " (" << static_cast<int>(p->net_type) << ")\n";
-        }
+        for (const auto& p : m->output_ports)
+            std::cout << "    out "
+                      << std::setw(10) << p->spec.name
+                      << "  net " << std::setw(3) << p->net->id
+                      << " (" << static_cast<int>(p->net_type) << ")\n";
     }
 
     for (const auto& g : combinational_groups) {

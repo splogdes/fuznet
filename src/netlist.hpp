@@ -47,7 +47,8 @@ struct Port {
 struct Module {
     Id                                         id;
     const ModuleSpec&                          spec;
-    std::vector<std::unique_ptr<Port>>         ports;
+    std::vector<std::unique_ptr<Port>>         input_ports;
+    std::vector<std::unique_ptr<Port>>         output_ports;
     std::unordered_map<std::string,std::string> param_values;
 
     Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng);
