@@ -66,13 +66,46 @@ void Netlist::add_external_net() {
 }
 
 void Netlist::add_random_module() {
-    const ModuleSpec& ms = lib.random_module();
+    const ModuleSpec& ms = lib.get_random_module();
     make_module(ms);
 }
 
+void Netlist::add_undriven_net(NetType t) {
+    Net* net = make_net();
+    net->net_type = t;
+}
+
+void Netlist::drive_undriven_nets(double prob_sequential, NetType t) {
+    for (auto& n : nets) {
+        if (n->driver || n->net_type != t) continue;
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+        bool is_seq = dist(rng) < prob_sequential;
+        const ModuleSpec& ms = lib.get_random_module(t, is_seq);
+        Module* m = make_module(ms, false);
+        Port* p = m->output_ports[0].get();
+        p->net = n.get();
+        n->driver = p;
+        
+        std::set<int> comb_nets = get_combinational_group(m, false);
+        for (auto& p : m->input_ports) {
+            if (p->net_type == NetType::LOGIC) {
+                Net* src = is_seq ? get_random_net(p->net_type) : get_random_net(p->net_type, comb_nets);
+                p->net = src;
+                src->add_sink(p.get());
+            } else {
+                Net* src = get_random_net(p->net_type);
+                p->net = src;
+                src->add_sink(p.get());
+            }
+        }
+        break;
+    }
+}
+     
+
 void Netlist::switch_up() {
     for (auto& mod : modules) {
-        std::set<int> comb_nets = get_combinational_group(mod.get());
+        std::set<int> comb_nets = get_combinational_group(mod.get(), true);
         std::vector<Net*> switchable;
         for (auto& net : nets)
             if (net->net_type == NetType::LOGIC && comb_nets.count(net->id) == 0)
@@ -121,13 +154,12 @@ void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buf_spec) {
     out_net->driver = p_out.get();
 }
 
-Module* Netlist::make_module(const ModuleSpec& ms) {
-    auto mod = std::make_unique<Module>(modules.size(), ms, rng);
+Module* Netlist::make_module(const ModuleSpec& ms, bool connect_random_nets) {
+    auto mod = std::make_unique<Module>(get_next_id(), ms, rng);
     Module* m = mod.get();
-    m->id = get_next_id();
     modules.push_back(std::move(mod));
 
-    std::vector<Port*> outputs;
+    if(!connect_random_nets) return m;
 
     for (const auto& p : m->input_ports) {
         Net* src = get_random_net(p->net_type);
@@ -154,7 +186,29 @@ Net* Netlist::get_random_net(NetType t) {
     return pool[dist(rng)];
 }
 
-std::set<int> Netlist::get_combinational_group(Module* seed) {
+Net* Netlist::get_random_net(NetType t, const std::set<int>& exclude) {
+    std::vector<Net*> pool;
+    for (auto& net : nets)
+        if (net->net_type == t && !exclude.contains(net->id))
+            pool.push_back(net.get());
+
+    if (pool.empty()) throw std::runtime_error("No nets of requested type");
+    std::uniform_int_distribution<std::size_t> dist(0, pool.size() - 1);
+    return pool[dist(rng)];
+}
+
+Net* Netlist::get_random_net(const std::set<int>& net_ids) {
+    std::vector<Net*> pool;
+    for (auto& net : nets)
+        if (net_ids.contains(net->id)) pool.push_back(net.get());
+
+    if (pool.empty()) throw std::runtime_error("No nets in requested set");
+    std::uniform_int_distribution<std::size_t> dist(0, pool.size() - 1);
+    return pool[dist(rng)];
+}
+
+
+std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_if_sequential) {
     std::set<int> group;
     std::queue<Net*> q;
 
@@ -167,7 +221,10 @@ std::set<int> Netlist::get_combinational_group(Module* seed) {
         q.pop();
         if (!group.insert(cur->id).second) continue;
         for (Port* sink : cur->sinks) {
-            if (!sink->parent || !sink->parent->spec.combinational) continue;
+            if (
+                !sink->parent || 
+                (stop_if_sequential && !sink->parent->spec.combinational)
+            ) continue;
             for (auto& p : sink->parent->output_ports)
                 if (p->net_type != NetType::CLK)
                     q.push(p->net);
@@ -291,7 +348,8 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const 
 
             default:
                 os << "  " << n_label << " [shape=diamond, label=\"" << n_label << "\"];\n";
-                emit_edge(n->driver->parent->get_name() + ":<" + n->driver->spec.name + ">", n_label + ":w");
+                if (n->driver)
+                    emit_edge(n->driver->parent->get_name() + ":<" + n->driver->spec.name + ">", n_label + ":w");
                 for (Port* s : n->sinks)
                     emit_edge(n_label + ":e", s->parent->get_name() + ":<" + s->spec.name + ">");
                 break;

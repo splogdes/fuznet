@@ -62,6 +62,8 @@ public:
 
     void add_random_module();
     void add_external_net();
+    void add_undriven_net(NetType t = NetType::LOGIC);
+    void drive_undriven_nets(double prob_combinational = 0.5, NetType t = NetType::LOGIC);
     void switch_up();
     void insert_output_buffers();
 
@@ -75,8 +77,10 @@ public:
 private:
     void          add_buffer(Net* net, const ModuleSpec& buffer);
     Net*          get_random_net(NetType t);
-    std::set<int> get_combinational_group(Module* module);
-    Module*       make_module(const ModuleSpec& ms);
+    Net*          get_random_net(NetType t, const std::set<int>& exclude);
+    Net*          get_random_net(const std::set<int>& net_ids);
+    std::set<int> get_combinational_group(Module* module, bool stop_if_sequential = false);
+    Module*       make_module(const ModuleSpec& ms, bool connect_random_nets = true);
 
     int  get_next_id()        { return id_counter++; }
     int  id_width() const     { return static_cast<int>(std::log10(id_counter)) + 1; }

@@ -1,8 +1,7 @@
 #include "lib.hpp"
 #include <yaml-cpp/yaml.h>
 
-Library::Library(const std::string& filename, std::mt19937_64& r)
-    : rng(std::move(r)) {
+Library::Library(const std::string& filename, std::mt19937_64& r) : rng(r) {
     YAML::Node root = YAML::LoadFile(filename);
 
     for (const auto& it : root) {
@@ -65,7 +64,29 @@ const ModuleSpec& Library::get_module(const std::string& name) const {
     return it->second;
 }
 
-const ModuleSpec& Library::random_module() const {
+const ModuleSpec& Library::get_random_module() const {
     std::discrete_distribution<int> dist(module_weights.begin(), module_weights.end());
     return get_module(module_names[dist(rng)]);
+}
+
+const ModuleSpec& Library::get_random_module(NetType t, bool only_sequential) {
+    std::vector<int> filtered_weights;
+    std::vector<std::string> filtered_names;
+
+    for (const auto& name : module_names) {
+        const ModuleSpec& m = get_module(name);
+        if (m.output_ports.size() == 1 
+            && m.output_ports[0].net_type == t
+            && !(only_sequential && m.combinational)
+        ) {
+            filtered_weights.push_back(m.weight);
+            filtered_names.push_back(name);
+        }
+    }
+
+    if (filtered_weights.empty())
+        throw std::runtime_error("No modules found for net type: " + std::to_string(static_cast<int>(t)));
+
+    std::discrete_distribution<int> dist(filtered_weights.begin(), filtered_weights.end());
+    return get_module(filtered_names[dist(rng)]);
 }
