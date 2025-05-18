@@ -7,54 +7,51 @@
 #include "lib.hpp"
 #include "netlist.hpp"
 
-void print_dot(std::ofstream& file, Netlist& netlist) {
-    file.open("output.dot", std::ios::trunc);
-    netlist.emit_dotfile(file, "top");
+using namespace std::chrono_literals;
+
+void write_dot(Netlist& nl) {
+    std::ofstream file("output.dot", std::ios::trunc);
+    nl.emit_dotfile(file, "top");
     file.close();
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(2s);
 }
 
 int main() {
     try {
-        std::mt19937_64 rng;
-        rng.seed(std::random_device{}());
+        std::mt19937_64 prng(std::random_device{}());
 
-        Library lib("src/lib.yaml", rng);
-        Netlist netlist(lib, rng);
+        Library library("src/lib.yaml", prng);
+        Netlist netlist(library, prng);
 
-        std::ofstream dot("output.dot");
-        dot.close();
-        print_dot(dot, netlist);
+        write_dot(netlist);
 
         netlist.add_random_module();
+        write_dot(netlist);
 
-        print_dot(dot, netlist); 
         netlist.add_external_net();
-
-        print_dot(dot, netlist);
+        write_dot(netlist);
 
         for (int i = 0; i < 3; ++i) {
             netlist.add_undriven_net();
-            print_dot(dot, netlist);
+            write_dot(netlist);
         }
         for (int i = 0; i < 3; ++i) {
             netlist.add_random_module();
-            print_dot(dot, netlist);
+            write_dot(netlist);
         }
         for (int i = 0; i < 3; ++i) {
-            netlist.drive_undriven_nets(1);
-            print_dot(dot, netlist);
+            netlist.drive_undriven_nets(1.0);
+            write_dot(netlist);
         }
 
-        // netlist.switch_up();
         netlist.insert_output_buffers();
-        print_dot(dot, netlist);
+        write_dot(netlist);
+
         netlist.print();
 
-        std::ofstream verilog("output.v");
-        netlist.emit_verilog(verilog, "top");
+        std::ofstream verilog_file("output.v");
+        netlist.emit_verilog(verilog_file, "top");
 
-        print_dot(dot, netlist);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << '\n';
         return 1;

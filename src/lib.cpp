@@ -1,60 +1,66 @@
 #include "lib.hpp"
 #include <yaml-cpp/yaml.h>
 
-Library::Library(const std::string& filename, std::mt19937_64& r) : rng(r) {
+Library::Library(const std::string& filename, std::mt19937_64& r)
+    : rng(r) {
+
     YAML::Node root = YAML::LoadFile(filename);
 
-    for (const auto& it : root) {
-        const std::string name = it.first.as<std::string>();
-        const YAML::Node& node = it.second;
+    for (const auto& node_pair : root) {
+        const std::string module_name = node_pair.first.as<std::string>();
+        const YAML::Node& module_node = node_pair.second;
 
-        ModuleSpec m;
-        m.name = name;
+        ModuleSpec module_spec;
+        module_spec.name = module_name;
 
-        for (const auto& port_entry : node["ports"]) {
-            PortSpec p;
-            p.name  = port_entry.first.as<std::string>();
+        for (const auto& port_pair : module_node["ports"]) {
+            PortSpec port_spec;
+            port_spec.name = port_pair.first.as<std::string>();
 
-            const YAML::Node& port = port_entry.second;
+            const YAML::Node& port_node = port_pair.second;
+            const std::string dir_str   = port_node["dir"].as<std::string>();
+            const std::string type_str  = port_node["type"].as<std::string>("logic");
 
-            const std::string dir  = port["dir"].as<std::string>();
-            p.width                = port["width"].as<int>();
-            const std::string type = port["type"].as<std::string>("logic");
-            
-            if      (type == "clk")      p.net_type = NetType::CLK;
-            else if (type == "ext_clk")  p.net_type = NetType::EXT_CLK;
-            else if (type == "ext_out")  p.net_type = NetType::EXT_OUT;
-            else if (type == "ext_in")   p.net_type = NetType::EXT_IN;
-            else if (type == "logic")    p.net_type = NetType::LOGIC;
-            else throw std::runtime_error("Invalid net type: " + type);
+            port_spec.width = port_node["width"].as<int>();
 
-            if (dir == "input") {
-                p.port_dir = PortDir::INPUT;
-                m.input_ports.push_back(p);
-            } else if (dir == "output") {
-                p.port_dir = PortDir::OUTPUT;
-                m.output_ports.push_back(p);
-            } else throw std::runtime_error("Invalid port direction: " + dir);
+            if      (type_str == "clk")      port_spec.net_type = NetType::CLK;
+            else if (type_str == "ext_clk")  port_spec.net_type = NetType::EXT_CLK;
+            else if (type_str == "ext_out")  port_spec.net_type = NetType::EXT_OUT;
+            else if (type_str == "ext_in")   port_spec.net_type = NetType::EXT_IN;
+            else if (type_str == "logic")    port_spec.net_type = NetType::LOGIC;
+            else throw std::runtime_error("Invalid net type: " + type_str);
+
+            if (dir_str == "input") {
+                port_spec.port_dir = PortDir::INPUT;
+                module_spec.input_ports.push_back(port_spec);
+            } else if (dir_str == "output") {
+                port_spec.port_dir = PortDir::OUTPUT;
+                module_spec.output_ports.push_back(port_spec);
+            } else {
+                throw std::runtime_error("Invalid port direction: " + dir_str);
+            }
         }
 
-        if (node["params"])
-            for (const auto& param_entry : node["params"]) {
-                ParamSpec p;
-                p.name  = param_entry.first.as<std::string>();
-                p.width = param_entry.second["width"].as<int>();
-                m.params.push_back(p);
+        if (module_node["params"])
+            for (const auto& param_pair : module_node["params"]) {
+                ParamSpec param_spec;
+                param_spec.name  = param_pair.first.as<std::string>();
+                param_spec.width = param_pair.second["width"].as<int>();
+                module_spec.params.push_back(param_spec);
             }
 
-        m.combinational = node["combinational"].as<bool>(true);
+        module_spec.combinational =
+            module_node["combinational"].as<bool>(true);
 
-        for (const auto& res : node["resources"])
-            m.resource[res.first.as<std::string>()] = res.second.as<int>();
+        for (const auto& res_pair : module_node["resources"])
+            module_spec.resource[res_pair.first.as<std::string>()] =
+                res_pair.second.as<int>();
 
-        m.weight = node["weight"].as<int>(1);
+        module_spec.weight = module_node["weight"].as<int>(1);
 
-        module_weights.push_back(m.weight);
-        modules.emplace(name, m);
-        module_names.push_back(name);
+        module_weights.push_back(module_spec.weight);
+        modules.emplace(module_name, module_spec);
+        module_names.push_back(module_name);
     }
 }
 
@@ -69,24 +75,23 @@ const ModuleSpec& Library::get_random_module() const {
     return get_module(module_names[dist(rng)]);
 }
 
-const ModuleSpec& Library::get_random_module(NetType t, bool only_sequential) {
-    std::vector<int> filtered_weights;
-    std::vector<std::string> filtered_names;
+const ModuleSpec& Library::get_random_module(NetType t, bool only_sequential) const {
+    std::vector<int>          weights;
+    std::vector<std::string>  names;
 
     for (const auto& name : module_names) {
-        const ModuleSpec& m = get_module(name);
-        if (m.output_ports.size() == 1 
-            && m.output_ports[0].net_type == t
-            && !(only_sequential && m.combinational)
-        ) {
-            filtered_weights.push_back(m.weight);
-            filtered_names.push_back(name);
+        const ModuleSpec& spec = get_module(name);
+        if (spec.output_ports.size() == 1 &&
+            spec.output_ports[0].net_type == t &&
+            !(only_sequential && spec.combinational)) {
+            weights.push_back(spec.weight);
+            names.push_back(name);
         }
     }
 
-    if (filtered_weights.empty())
-        throw std::runtime_error("No modules found for net type: " + std::to_string(static_cast<int>(t)));
+    if (weights.empty())
+        throw std::runtime_error("No modules for requested net type");
 
-    std::discrete_distribution<int> dist(filtered_weights.begin(), filtered_weights.end());
-    return get_module(filtered_names[dist(rng)]);
+    std::discrete_distribution<int> dist(weights.begin(), weights.end());
+    return get_module(names[dist(rng)]);
 }
