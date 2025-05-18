@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-#include "module_library.hpp"
+#include "library.hpp"
 #include "netlist.hpp"
 
 using namespace std::chrono_literals;

@@ -1,5 +1,13 @@
-# cells.yaml  – primitive cell library
+# xilinx.yaml  – primitive cell library
 # ------------------------------------
+
+# Name:
+#   weight - used for probability of cell selection
+#   ports - list of ports with direction and width
+#   params - list of parameters with type and width
+#   resource - list of resources used by the cell (io, lc)
+#   combinational - if true, the cell is combinational default is false
+#   type - type of the port, can be ext_in, ext_out, ext_clk, clk
 
 OBUF:
   weight: 1
