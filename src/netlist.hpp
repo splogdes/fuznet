@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lib.hpp"
-#include "module.hpp"
+#include "module_library.hpp"
+#include "module_spec.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -12,6 +12,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <functional>
 #include <vector>
 
 using Id = std::size_t;
@@ -26,7 +27,8 @@ struct Net {
     Port*              driver{nullptr};
     std::vector<Port*> sinks;
 
-    std::string get_name(int width = 0) const;
+    std::string lable(int width = 0) const;
+
     void add_sink   (Port* p) { assert(p); sinks.push_back(p); }
     void remove_sink(Port* p);
 };
@@ -46,25 +48,25 @@ struct Port {
 struct Module {
     Id                                           id;
     const ModuleSpec&                            spec;
-    std::vector<std::unique_ptr<Port>>           input_ports;
-    std::vector<std::unique_ptr<Port>>           output_ports;
+    std::vector<std::unique_ptr<Port>>           inputs;
+    std::vector<std::unique_ptr<Port>>           outputs;
     std::unordered_map<std::string, std::string> param_values;
 
-    Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng);
-    std::string get_name(int width = 0) const;
+    Module(Id id_, const ModuleSpec& ms, std::mt19937_64& prng);
+    std::string lable(int width = 0) const;
 };
 
 class Netlist {
 public:
-    Netlist(Library& lib, std::mt19937_64& rng);
+    Netlist(ModuleLibrary& lib, std::mt19937_64& rng);
     ~Netlist();
 
     void add_random_module();
     void add_external_net();
     void add_undriven_net(NetType type = NetType::LOGIC);
-    void drive_undriven_nets(double sequential_probability = 0.5, NetType type = NetType::LOGIC);
+    void drive_undriven_nets(double sequential_probability = 0.5, bool limit_to_one = false, NetType type = NetType::LOGIC);
     void switch_up();
-    void insert_output_buffers();
+    void buffer_unconnected_outputs();
 
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
@@ -75,13 +77,11 @@ public:
 
 private:
     void          add_buffer(Net* net, const ModuleSpec& buffer);
-    Net*          get_random_net(NetType type);
-    Net*          get_random_net(NetType type, const std::set<int>& exclude);
-    Net*          get_random_net(const std::set<int>& allowed_ids);
-    std::set<int> get_combinational_group(Module* module, bool stop_at_seq = false);
+    Net*          get_random_net(std::function<bool(const Net*)> filter = nullptr) const;
+    std::set<int> get_combinational_group(Module* module, bool stop_at_seq = false) const;
     Module*       make_module(const ModuleSpec& ms, bool connect_random = true);
 
-    int  get_next_id()    { return id_counter++; }
+    int  get_next_id() { return id_counter++; }
     int  id_width() const { return static_cast<int>(std::log10(id_counter)) + 1; }
     Net* get_net(int id);
 
@@ -89,7 +89,7 @@ private:
     std::vector<std::unique_ptr<Net>>    nets;
     std::vector<std::set<int>>           combinational_groups;
 
-    Library&        lib;
-    std::mt19937_64 rng;
-    int             id_counter{1};
+    ModuleLibrary&          lib;
+    mutable std::mt19937_64 prng;
+    int                     id_counter{1};
 };

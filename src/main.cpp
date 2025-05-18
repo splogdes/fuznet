@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-#include "lib.hpp"
+#include "module_library.hpp"
 #include "netlist.hpp"
 
 using namespace std::chrono_literals;
@@ -13,14 +13,14 @@ void write_dot(Netlist& nl) {
     std::ofstream file("output.dot", std::ios::trunc);
     nl.emit_dotfile(file, "top");
     file.close();
-    std::this_thread::sleep_for(2s);
+    std::this_thread::sleep_for(1s);
 }
 
 int main() {
     try {
         std::mt19937_64 prng(std::random_device{}());
 
-        Library library("src/lib.yaml", prng);
+        ModuleLibrary library("hardware/cells/xilinx.yaml", prng);
         Netlist netlist(library, prng);
 
         write_dot(netlist);
@@ -40,11 +40,11 @@ int main() {
             write_dot(netlist);
         }
         for (int i = 0; i < 3; ++i) {
-            netlist.drive_undriven_nets(1.0);
+            netlist.drive_undriven_nets(0.3, true);
             write_dot(netlist);
         }
 
-        netlist.insert_output_buffers();
+        netlist.buffer_unconnected_outputs();
         write_dot(netlist);
 
         netlist.print();

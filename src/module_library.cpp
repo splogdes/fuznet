@@ -1,7 +1,7 @@
-#include "lib.hpp"
+#include "module_library.hpp"
 #include <yaml-cpp/yaml.h>
 
-Library::Library(const std::string& filename, std::mt19937_64& r)
+ModuleLibrary::ModuleLibrary(const std::string& filename, std::mt19937_64& r)
     : rng(r) {
 
     YAML::Node root = YAML::LoadFile(filename);
@@ -32,10 +32,10 @@ Library::Library(const std::string& filename, std::mt19937_64& r)
 
             if (dir_str == "input") {
                 port_spec.port_dir = PortDir::INPUT;
-                module_spec.input_ports.push_back(port_spec);
+                module_spec.inputs.push_back(port_spec);
             } else if (dir_str == "output") {
                 port_spec.port_dir = PortDir::OUTPUT;
-                module_spec.output_ports.push_back(port_spec);
+                module_spec.outputs.push_back(port_spec);
             } else {
                 throw std::runtime_error("Invalid port direction: " + dir_str);
             }
@@ -64,26 +64,24 @@ Library::Library(const std::string& filename, std::mt19937_64& r)
     }
 }
 
-const ModuleSpec& Library::get_module(const std::string& name) const {
+const ModuleSpec& ModuleLibrary::get_module(const std::string& name) const {
     auto it = modules.find(name);
     if (it == modules.end()) throw std::runtime_error("Module not found: " + name);
     return it->second;
 }
 
-const ModuleSpec& Library::get_random_module() const {
-    std::discrete_distribution<int> dist(module_weights.begin(), module_weights.end());
-    return get_module(module_names[dist(rng)]);
-}
+const ModuleSpec& ModuleLibrary::get_random_module(std::function<bool (const ModuleSpec& ms)> filter) const {
+    if(!filter) {
+        std::discrete_distribution<int> dist(module_weights.begin(), module_weights.end());
+        return get_module(module_names[dist(rng)]);
+    }
 
-const ModuleSpec& Library::get_random_module(NetType t, bool only_sequential) const {
     std::vector<int>          weights;
     std::vector<std::string>  names;
 
     for (const auto& name : module_names) {
         const ModuleSpec& spec = get_module(name);
-        if (spec.output_ports.size() == 1 &&
-            spec.output_ports[0].net_type == t &&
-            !(only_sequential && spec.combinational)) {
+        if (filter(spec)) {
             weights.push_back(spec.weight);
             names.push_back(name);
         }
