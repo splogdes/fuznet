@@ -99,6 +99,7 @@ void Orchestrator::run(const std::string& output_prefix, bool animate) {
     auto dump_dot = [&]() {
         std::ofstream file(dot_path, std::ios::trunc);
         netlist.emit_dotfile(file, "top");
+        file.close();
         if (animate) std::this_thread::sleep_for(1s);
     };
 

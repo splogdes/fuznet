@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
 
         std::string lib_cfg      = "hardware/cells/xilinx.yaml";
         std::string settings_cfg = "config/settings.toml";
-        std::string out_prefix   = "output";
+        std::string out_prefix   = "output/output";
         std::string seed_str     = std::to_string(std::random_device{}());
 
         bool animate = false;
