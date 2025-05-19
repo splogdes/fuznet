@@ -1,44 +1,47 @@
-#pragma 0
-#include <memory>
-#include <vector>
-#include <string>
+#pragma once
+
 #include <atomic>
 #include <random>
+#include <string>
 #include <thread>
+#include <vector>
 
-#include "netlist.hpp"
 #include "library.hpp"
+#include "netlist.hpp"
 #include "commands.hpp"
-
 
 namespace fuznet {
 
 class Orchestrator {
-    public:
-        explicit Orchestrator(const std::string& lib_yaml,
-                              const std::string& config_toml = "config/probabilities.toml",
-                              unsigned seed = std::random_device{}());
+public:
+    Orchestrator(const std::string& lib_yaml    = "hardware/cells/xilinx.yaml",
+                 const std::string& config_toml = "config/settings.toml",
+                 unsigned           seed        = std::random_device{}());
 
-        void run(int max_iters = 10'000, int ms_sleep = 10);
-        void stop()                     { stop_flag.store(true); }
+    void run(const std::string& dot_path, bool animate = false);
 
-        ~Orchestrator();
+    ~Orchestrator();
 
-    private:  
-        ICommand& pick_command();
-        void load_config(std::string_view toml_path);
+private:
+    void load_config(const std::string& toml_path, bool print = false);
 
-        struct Entry {
-            std::unique_ptr<ICommand> cmd;
-            double                    weight;
-        };
+    struct Entry {
+        ICommand* cmd;
+        double    weight;
+    };
 
-        Library             library;
-        Netlist             netlist;
-        std::mt19937_64     rng;
-        std::vector<Entry>  commands;
-        std::discrete_distribution<int> dist;
-        std::atomic<bool>   stop_flag{false};
+    Library                         library;
+    Netlist                         netlist;
+    std::mt19937_64                 rng;
+    std::vector<Entry>              commands;
+    std::discrete_distribution<int> weight_dist;
+    std::atomic<bool>               stop_flag{false};
+
+    int    max_iter               = 0;
+    int    stop_iter_lambda       = 0;
+    double seq_probability        = 0.0;
+    int    start_undriven_lambda  = 0;
+    int    start_input_lambda     = 0;
 };
 
 }

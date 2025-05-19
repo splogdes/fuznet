@@ -26,7 +26,7 @@ struct AddExternalNet : ICommand {
         return "AddExternalNet";
     }
     void execute() override {
-        netlist.add_external_net();
+        netlist.add_external_nets();
     }
 };
 
@@ -39,7 +39,7 @@ struct AddUndriveNet : ICommand {
         return "AddUndriveNet";
     }
     void execute() override {
-        netlist.add_undriven_net(type);
+        netlist.add_undriven_nets(type);
     }
 };
 

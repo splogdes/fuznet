@@ -19,5 +19,5 @@ private:
     std::unordered_map<std::string, ModuleSpec> modules;
     std::vector<std::string>                    module_names;
     std::vector<int>                            module_weights;
-    mutable std::mt19937_64                     rng;
+    std::mt19937_64&                            rng;
 };

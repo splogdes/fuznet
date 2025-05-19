@@ -84,6 +84,11 @@
         "future": "cpp",
         "iomanip": "cpp",
         "fstream": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "numeric": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "numbers": "cpp",
+        "typeindex": "cpp"
     }
 }

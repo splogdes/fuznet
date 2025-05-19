@@ -21,7 +21,7 @@ void Net::remove_sink(Port* port) {
     sinks.erase(it, sinks.end());
 }
 
-Module::Module(Id module_id, const ModuleSpec& spec_ref, std::mt19937_64& prng)
+Module::Module(Id module_id, const ModuleSpec& spec_ref, std::mt19937_64& rng)
     : id{module_id}, spec{spec_ref} {
 
     for (const auto& port_spec : spec_ref.inputs)
@@ -34,7 +34,7 @@ Module::Module(Id module_id, const ModuleSpec& spec_ref, std::mt19937_64& prng)
         std::string value;
         value.reserve(param_spec.width);
         for (int i = 0; i < param_spec.width; ++i)
-            value.push_back((prng() & 1) ? '1' : '0');
+            value.push_back((rng() & 1) ? '1' : '0');
         param_values.emplace(param_spec.name, std::move(value));
     }
 }
@@ -46,8 +46,8 @@ std::string Module::lable(int width) const {
     return "_" + std::string(width - digit_count, '0') + std::to_string(id) + "_";
 }
 
-Netlist::Netlist(Library& library_ref, std::mt19937_64& prng)
-    : lib{library_ref}, prng{std::move(prng)} {
+Netlist::Netlist(Library& library_ref, std::mt19937_64& rng)
+    : lib{library_ref}, rng{rng} {
 
     Net* input_net = make_net();
     Net* clock_net = make_net();
@@ -62,10 +62,12 @@ Netlist::Netlist(Library& library_ref, std::mt19937_64& prng)
 
 Netlist::~Netlist() = default;
 
-void Netlist::add_external_net() {
-    Net* ext_net = make_net();
-    ext_net->net_type = NetType::EXT_IN;
-    add_buffer(ext_net, lib.get_module("IBUF"));
+void Netlist::add_external_nets(size_t number) {
+    for (size_t i = 0; i < number; ++i) {
+        Net* ext_net = make_net();
+        ext_net->net_type = NetType::EXT_IN;
+        add_buffer(ext_net, lib.get_module("IBUF"));
+    }
 }
 
 void Netlist::add_random_module() {
@@ -73,9 +75,11 @@ void Netlist::add_random_module() {
     make_module(spec_ref);
 }
 
-void Netlist::add_undriven_net(NetType type) {
-    Net* new_net = make_net();
-    new_net->net_type = type;
+void Netlist::add_undriven_nets(NetType type, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        Net* new_net = make_net();
+        new_net->net_type = type;
+    }
 }
 
 void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, NetType type) {
@@ -83,7 +87,7 @@ void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, Net
         if (net_ptr->driver || net_ptr->net_type != type) continue;
 
         std::uniform_real_distribution<double> dist(0.0, 1.0);
-        bool sequential = dist(prng) < seq_probability;
+        bool sequential = dist(rng) < seq_probability;
 
         auto module_filter = [&](const ModuleSpec& ms) {
             return ms.outputs.size() == 1 &&
@@ -141,7 +145,7 @@ void Netlist::switch_up() {
 
         for (auto& input_port : module_ptr->inputs)
             if (input_port->net_type == NetType::LOGIC) {
-                Net* new_net = swappable[dist(prng)];
+                Net* new_net = swappable[dist(rng)];
                 input_port->net->remove_sink(input_port.get());
                 input_port->net = new_net;
                 new_net->add_sink(input_port.get());
@@ -164,7 +168,7 @@ void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec) {
         buffer_spec.outputs.size() != 1)
         throw std::invalid_argument("Buffer must have one input and one output");
 
-    auto buffer_module = std::make_unique<Module>(modules.size(), buffer_spec, prng);
+    auto buffer_module = std::make_unique<Module>(modules.size(), buffer_spec, rng);
     Module* module_ptr = buffer_module.get();
     module_ptr->id = get_next_id();
     modules.push_back(std::move(buffer_module));
@@ -182,7 +186,7 @@ void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec) {
 }
 
 Module* Netlist::make_module(const ModuleSpec& spec_ref, bool connect_random) {
-    auto module_obj = std::make_unique<Module>(get_next_id(), spec_ref, prng);
+    auto module_obj = std::make_unique<Module>(get_next_id(), spec_ref, rng);
     Module* module_ptr = module_obj.get();
     modules.push_back(std::move(module_obj));
 
@@ -215,7 +219,7 @@ Net* Netlist::get_random_net(std::function<bool(const Net*)> filter) const {
         throw std::runtime_error("No nets of requested type");
 
     std::uniform_int_distribution<std::size_t> dist(0, candidates.size() - 1);
-    return candidates[dist(prng)];
+    return candidates[dist(rng)];
 }
 
 std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_at_seq) const {
@@ -381,10 +385,33 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const 
     os << "}\n";
 }
 
-void Netlist::print() const {
-    std::cout << "Netlist:\n"
-              << "  modules : " << modules.size() << '\n'
-              << "  nets    : " << nets.size() << '\n';
+void Netlist::print(bool only_stats) const {
+    int in_nets  = 0;
+    int out_nets = 0;
+
+    for (const auto& net : nets)
+        if      (net->net_type == NetType::EXT_IN)  ++in_nets;
+        else if (net->net_type == NetType::EXT_OUT) ++out_nets;
+
+    int comb_modules = 0;
+    int seq_modules  = 0;
+
+    for (const auto& module : modules)
+        if      (module->spec.combinational) ++comb_modules;
+        else                                 ++seq_modules;
+
+    std::cout << "+--------------------+-------+\n"
+              << "| Metric             | Count |\n"
+              << "+--------------------+-------+\n"
+              << "| Input nets         | " << std::setw(5) << in_nets        << " |\n"
+              << "| Output nets        | " << std::setw(5) << out_nets       << " |\n"
+              << "| Total nets         | " << std::setw(5) << nets.size()    << " |\n"
+              << "| Combinational mods | " << std::setw(5) << comb_modules   << " |\n"
+              << "| Sequential mods    | " << std::setw(5) << seq_modules    << " |\n"
+              << "| Total modules      | " << std::setw(5) << modules.size() << " |\n"
+              << "+--------------------+-------+\n";
+
+    if (only_stats) return;
 
     for (const auto& module_ptr : modules) {
         std::cout << "Module #" << module_ptr->id << " (" << module_ptr->spec.name << ")\n";
@@ -398,11 +425,5 @@ void Netlist::print() const {
                       << std::setw(12) << port_ptr->spec.name
                       << "  net " << std::setw(4) << port_ptr->net->id
                       << " (" << static_cast<int>(port_ptr->net_type) << ")\n";
-    }
-
-    for (const auto& group : combinational_groups) {
-        std::cout << "  comb group:";
-        for (int id : group) std::cout << ' ' << id;
-        std::cout << '\n';
     }
 }

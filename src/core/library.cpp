@@ -1,8 +1,8 @@
 #include "library.hpp"
 #include <yaml-cpp/yaml.h>
 
-Library::Library(const std::string& filename, std::mt19937_64& r)
-    : rng(r) {
+Library::Library(const std::string& filename, std::mt19937_64& rng)
+    : rng(rng) {
 
     YAML::Node root = YAML::LoadFile(filename);
 

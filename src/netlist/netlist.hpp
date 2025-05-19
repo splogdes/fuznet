@@ -52,7 +52,7 @@ struct Module {
     std::vector<std::unique_ptr<Port>>           outputs;
     std::unordered_map<std::string, std::string> param_values;
 
-    Module(Id id_, const ModuleSpec& ms, std::mt19937_64& prng);
+    Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng);
     std::string lable(int width = 0) const;
 };
 
@@ -62,8 +62,8 @@ public:
     ~Netlist();
 
     void add_random_module();
-    void add_external_net();
-    void add_undriven_net(NetType type = NetType::LOGIC);
+    void add_external_nets(size_t number = 1);
+    void add_undriven_nets(NetType type = NetType::LOGIC, size_t number = 1);
     void drive_undriven_nets(double sequential_probability = 0.5, bool limit_to_one = false, NetType type = NetType::LOGIC);
     void switch_up();
     void buffer_unconnected_outputs();
@@ -71,7 +71,7 @@ public:
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
 
-    void print() const;
+    void print(bool only_stats = true) const;
 
     Net* make_net(std::string explicit_name = "");
 
@@ -87,9 +87,8 @@ private:
 
     std::vector<std::unique_ptr<Module>> modules;
     std::vector<std::unique_ptr<Net>>    nets;
-    std::vector<std::set<int>>           combinational_groups;
 
-    Library&                lib;
-    mutable std::mt19937_64 prng;
-    int                     id_counter{1};
+    Library&                    lib;
+    std::mt19937_64&            rng;
+    int                         id_counter{1};
 };
