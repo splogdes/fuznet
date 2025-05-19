@@ -15,10 +15,13 @@ namespace fuznet {
 
 Orchestrator::Orchestrator(const std::string& lib_yaml,
                            const std::string& config_toml,
-                           unsigned           seed)
+                           unsigned           seed,
+                           bool               verbose)
     : rng(seed),
       library(lib_yaml, rng),
-      netlist(library, rng) {
+      netlist(library, rng),
+      verbose(verbose),
+      animate(animate) {
 
     commands = {
         { new AddRandomModule(netlist),            1.0 },
@@ -29,7 +32,7 @@ Orchestrator::Orchestrator(const std::string& lib_yaml,
         { new BufferUnconnectedOutputs(netlist),   1.0 }
     };
 
-    load_config(config_toml, true);
+    load_config(config_toml);
 
     std::poisson_distribution<int> undriven_dist (start_undriven_lambda);
     std::poisson_distribution<int> input_dist    (start_input_lambda);
@@ -42,7 +45,7 @@ Orchestrator::Orchestrator(const std::string& lib_yaml,
     weight_dist = std::discrete_distribution<int>(weights.begin(), weights.end());
 }
 
-void Orchestrator::load_config(const std::string& toml_path, bool print) {
+void Orchestrator::load_config(const std::string& toml_path) {
     auto cfg = toml::parse_file(toml_path);
 
     for (auto& entry : commands) {
@@ -71,23 +74,27 @@ void Orchestrator::load_config(const std::string& toml_path, bool print) {
     if (drive_one)  drive_one->seq_probability  = seq_probability;
     if (drive_many) drive_many->seq_probability = seq_probability;
 
-    if (print) {
-        std::cout << "\n=== settings: " << toml_path << " ===\n";
-        std::cout << "max_iter:                 " << max_iter              << '\n';
-        std::cout << "stop_iter_lambda:         " << stop_iter_lambda      << '\n';
-        std::cout << "start_input_lambda:       " << start_input_lambda    << '\n';
-        std::cout << "start_undriven_lambda:    " << start_undriven_lambda << '\n';
-        std::cout << "prob_sequential:          " << seq_probability       << "\n\n";
-        std::cout << "      --- command weights ---\n";
-        for (const auto& entry : commands)
-            std::cout << std::left << std::setw(26) << entry.cmd->name() << " : " << entry.weight << '\n';
-        std::cout << "====================================\n\n";
-    }
+    if (!verbose) return;
+
+    std::cout << "\n=== settings: " << toml_path << " ===\n";
+    std::cout << "max_iter:                 " << max_iter              << '\n';
+    std::cout << "stop_iter_lambda:         " << stop_iter_lambda      << '\n';
+    std::cout << "start_input_lambda:       " << start_input_lambda    << '\n';
+    std::cout << "start_undriven_lambda:    " << start_undriven_lambda << '\n';
+    std::cout << "prob_sequential:          " << seq_probability       << "\n\n";
+    std::cout << "      --- command weights ---\n";
+    for (const auto& entry : commands)
+    std::cout << std::left << std::setw(26) << entry.cmd->name() << " : " << entry.weight << '\n';
+    std::cout << "======== Configuration Loaded ========\n";
+    std::cout << "======================================\n\n";
 }
 
-void Orchestrator::run(const std::string& dot_path, bool animate) {
+void Orchestrator::run(const std::string& output_prefix, bool animate) {
     std::poisson_distribution<int> stop_dist(stop_iter_lambda);
     int iterations = std::min(stop_dist(rng), max_iter);
+
+    std::string dot_path = output_prefix + ".dot";
+    std::string verilog_path = output_prefix + ".v";
 
     auto dump_dot = [&]() {
         std::ofstream file(dot_path, std::ios::trunc);
@@ -103,10 +110,12 @@ void Orchestrator::run(const std::string& dot_path, bool animate) {
     netlist.drive_undriven_nets(seq_probability);
     netlist.buffer_unconnected_outputs();
     
-    std::ofstream v{"output.v"};
+    std::ofstream v(verilog_path);
     netlist.emit_verilog(v, "top");
     
     dump_dot();
+
+    if(!verbose) return;
     
     std::cout << "======== Netlist Generated =========\n";
     netlist.print();

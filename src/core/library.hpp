@@ -4,7 +4,7 @@
 
 #include <random>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <functional>
 
@@ -16,7 +16,7 @@ public:
     const ModuleSpec& get_random_module (std::function<bool (const ModuleSpec& ms)> filter = nullptr) const;
 
 private:
-    std::unordered_map<std::string, ModuleSpec> modules;
+    std::map<std::string, ModuleSpec>           modules;
     std::vector<std::string>                    module_names;
     std::vector<int>                            module_weights;
     std::mt19937_64&                            rng;

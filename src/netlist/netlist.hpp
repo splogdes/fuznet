@@ -11,7 +11,7 @@
 #include <random>
 #include <set>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <functional>
 #include <vector>
 
@@ -50,7 +50,7 @@ struct Module {
     const ModuleSpec&                            spec;
     std::vector<std::unique_ptr<Port>>           inputs;
     std::vector<std::unique_ptr<Port>>           outputs;
-    std::unordered_map<std::string, std::string> param_values;
+    std::map<std::string, std::string>           param_values;
 
     Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng);
     std::string lable(int width = 0) const;

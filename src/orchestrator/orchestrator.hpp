@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <random>
 #include <string>
 #include <thread>
@@ -16,14 +15,15 @@ class Orchestrator {
 public:
     Orchestrator(const std::string& lib_yaml    = "hardware/cells/xilinx.yaml",
                  const std::string& config_toml = "config/settings.toml",
-                 unsigned           seed        = std::random_device{}());
+                 unsigned           seed        = std::random_device{}(),
+                 bool               verbose     = false);
 
-    void run(const std::string& dot_path, bool animate = false);
+    void run(const std::string& output_prefix, bool animate = false);
 
     ~Orchestrator();
 
 private:
-    void load_config(const std::string& toml_path, bool print = false);
+    void load_config(const std::string& toml_path);
 
     struct Entry {
         ICommand* cmd;
@@ -42,6 +42,8 @@ private:
     double seq_probability        = 0.0;
     int    start_undriven_lambda  = 0;
     int    start_input_lambda     = 0;
+    bool   verbose                = false;
+    bool   animate                = false;
 };
 
 }

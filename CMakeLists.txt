@@ -21,6 +21,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(yaml-cpp)
 
+FetchContent_Declare(
+  CLI11
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+  GIT_TAG  v2.5.0
+)
+FetchContent_MakeAvailable(CLI11)
+
 add_subdirectory(src/core)
 add_subdirectory(src/netlist)
 add_subdirectory(src/actions)
@@ -28,4 +35,4 @@ add_subdirectory(src/orchestrator)
 
 add_executable(fuznet src/main.cpp)
 
-target_link_libraries(fuznet PRIVATE netlist core orchestrator actions)
+target_link_libraries(fuznet PRIVATE orchestrator CLI11::CLI11)

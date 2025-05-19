@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <vector>
 
 enum class PortDir { INPUT, OUTPUT };
@@ -27,5 +27,5 @@ struct ModuleSpec {
     std::vector<ParamSpec>                params;
     bool                                  combinational;
     int                                   weight;
-    std::unordered_map<std::string, int>  resource;
+    std::map<std::string, int>            resource;
 };
