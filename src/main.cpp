@@ -20,7 +20,7 @@ int main() {
     try {
         std::mt19937_64 prng(std::random_device{}());
 
-        ModuleLibrary library("hardware/cells/xilinx.yaml", prng);
+        Library library("hardware/cells/xilinx.yaml", prng);
         Netlist netlist(library, prng);
 
         write_dot(netlist);

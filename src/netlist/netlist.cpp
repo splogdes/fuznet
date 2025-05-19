@@ -46,7 +46,7 @@ std::string Module::lable(int width) const {
     return "_" + std::string(width - digit_count, '0') + std::to_string(id) + "_";
 }
 
-Netlist::Netlist(ModuleLibrary& library_ref, std::mt19937_64& prng)
+Netlist::Netlist(Library& library_ref, std::mt19937_64& prng)
     : lib{library_ref}, prng{std::move(prng)} {
 
     Net* input_net = make_net();

@@ -8,9 +8,9 @@
 #include <vector>
 #include <functional>
 
-class ModuleLibrary {
+class Library {
 public:
-    ModuleLibrary(const std::string& filename, std::mt19937_64& rng);
+    Library(const std::string& filename, std::mt19937_64& rng);
 
     const ModuleSpec& get_module        (const std::string& name) const;
     const ModuleSpec& get_random_module (std::function<bool (const ModuleSpec& ms)> filter = nullptr) const;

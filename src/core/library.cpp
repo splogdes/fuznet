@@ -1,7 +1,7 @@
 #include "library.hpp"
 #include <yaml-cpp/yaml.h>
 
-ModuleLibrary::ModuleLibrary(const std::string& filename, std::mt19937_64& r)
+Library::Library(const std::string& filename, std::mt19937_64& r)
     : rng(r) {
 
     YAML::Node root = YAML::LoadFile(filename);
@@ -64,13 +64,13 @@ ModuleLibrary::ModuleLibrary(const std::string& filename, std::mt19937_64& r)
     }
 }
 
-const ModuleSpec& ModuleLibrary::get_module(const std::string& name) const {
+const ModuleSpec& Library::get_module(const std::string& name) const {
     auto it = modules.find(name);
     if (it == modules.end()) throw std::runtime_error("Module not found: " + name);
     return it->second;
 }
 
-const ModuleSpec& ModuleLibrary::get_random_module(std::function<bool (const ModuleSpec& ms)> filter) const {
+const ModuleSpec& Library::get_random_module(std::function<bool (const ModuleSpec& ms)> filter) const {
     if(!filter) {
         std::discrete_distribution<int> dist(module_weights.begin(), module_weights.end());
         return get_module(module_names[dist(rng)]);

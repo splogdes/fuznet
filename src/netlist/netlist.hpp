@@ -58,7 +58,7 @@ struct Module {
 
 class Netlist {
 public:
-    Netlist(ModuleLibrary& lib, std::mt19937_64& rng);
+    Netlist(Library& lib, std::mt19937_64& rng);
     ~Netlist();
 
     void add_random_module();
@@ -89,7 +89,7 @@ private:
     std::vector<std::unique_ptr<Net>>    nets;
     std::vector<std::set<int>>           combinational_groups;
 
-    ModuleLibrary&          lib;
+    Library&                lib;
     mutable std::mt19937_64 prng;
     int                     id_counter{1};
 };
