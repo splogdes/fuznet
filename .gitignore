@@ -2,4 +2,5 @@ build/
 tmp/
 logs/
 .Xil/
+.env
 clockInfo.txt
