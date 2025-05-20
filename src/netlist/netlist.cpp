@@ -258,7 +258,7 @@ Net* Netlist::make_net(std::string explicit_name) {
 
 Net* Netlist::get_net(int id) {
     for (auto& net_ptr : nets)
-        if (net_ptr->id == id) return net_ptr.get();
+        if (net_ptr->id == static_cast<size_t>(id)) return net_ptr.get();
     throw std::runtime_error("Net not found");
 }
 

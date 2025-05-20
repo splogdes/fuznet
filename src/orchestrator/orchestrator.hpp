@@ -30,9 +30,9 @@ private:
         double    weight;
     };
 
+    std::mt19937_64                 rng;
     Library                         library;
     Netlist                         netlist;
-    std::mt19937_64                 rng;
     std::vector<Entry>              commands;
     std::discrete_distribution<int> weight_dist;
     std::atomic<bool>               stop_flag{false};

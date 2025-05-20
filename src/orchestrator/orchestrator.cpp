@@ -20,8 +20,8 @@ Orchestrator::Orchestrator(const std::string& lib_yaml,
     : rng(seed),
       library(lib_yaml, rng),
       netlist(library, rng),
-      verbose(verbose),
-      animate(animate) {
+      verbose(verbose) 
+    {
 
     commands = {
         { new AddRandomModule(netlist),            1.0 },
@@ -68,8 +68,8 @@ void Orchestrator::load_config(const std::string& toml_path) {
     DriveUndrivenNets* drive_many  = nullptr;
 
     for (auto& entry : commands) {
-        if (entry.cmd->name() == "DriveUndrivenNet")   drive_one  = static_cast<DriveUndrivenNet*>(entry.cmd);
-        if (entry.cmd->name() == "DriveUndrivenNets")  drive_many = static_cast<DriveUndrivenNets*>(entry.cmd);
+        if (std::string(entry.cmd->name()) == "DriveUndrivenNet")   drive_one  = static_cast<DriveUndrivenNet*>(entry.cmd);
+        if (std::string(entry.cmd->name()) == "DriveUndrivenNets")  drive_many = static_cast<DriveUndrivenNets*>(entry.cmd);
     }
     if (drive_one)  drive_one->seq_probability  = seq_probability;
     if (drive_many) drive_many->seq_probability = seq_probability;
