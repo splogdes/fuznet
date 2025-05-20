@@ -11,5 +11,5 @@ while true; do
     scripts/fuzzer.sh || true
 
     sleep 2
-    
+
 done

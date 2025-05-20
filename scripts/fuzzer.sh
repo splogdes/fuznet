@@ -19,6 +19,7 @@ CONFIG=${CONFIG:-config/settings.toml}
 PRIMS=${PRIMS:-"+/xilinx/cells_map.v +/xilinx/cells_sim.v"}
 
 XILINX_TCL=${XILINX_TCL:-flows/vivado/impl.tcl}
+VIVADO_PATH=${VIVADO_PATH:-"/opt/Xilinx/Vivado/2024.2/bin/vivado"}
 
 RTL_NET=${RTL_NET:-"$OUTDIR/post_synth.v"}
 PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
@@ -97,12 +98,12 @@ blue "fuznet finished"
 
 # ── Vivado PnR ────────────────────────────────────────────────────
 blue "Running Vivado PnR"
-vivado -mode batch \
-       -log "$LOG_DIR/${DATE}_vivado.log" \
-       -journal "$LOG_DIR/${DATE}_vivado.jou" \
-       -source "$XILINX_TCL" \
-       -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
-       >/dev/null 2>&1
+"$VIVADO_PATH" -mode batch \
+               -log "$LOG_DIR/${DATE}_vivado.log" \
+               -journal "$LOG_DIR/${DATE}_vivado.jou" \
+               -source "$XILINX_TCL" \
+               -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
+               > /dev/null 2>&1
 VIVADO_RET=$?
 
 if [[ $VIVADO_RET -gt 128 ]]; then
