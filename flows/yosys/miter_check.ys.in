@@ -1,0 +1,22 @@
+read_verilog __RTL__
+rename __TOP__ netlist
+
+read_verilog __PNR__
+rename __TOP__ impl
+
+read_verilog __PRIMS__
+
+proc; memory; opt
+
+miter -equiv -make_assert netlist impl eq_top
+show      -format dot -prefix __OUT__/miter_raw
+
+hierarchy -top eq_top; proc; flatten;
+opt_clean; proc; memory; opt
+
+show      -format dot -prefix __OUT__/miter_flat
+
+write_verilog -noattr __OUT__/vivado.v
+sat -dump_vcd __OUT__/counter_example.vcd -verify-no-timeout -timeout 1 -prove-asserts -tempinduct eq_top
+dffunmap
+write_smt2 __OUT__/vivado.smt2
