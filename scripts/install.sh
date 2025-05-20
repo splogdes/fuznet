@@ -12,7 +12,6 @@ set -euo pipefail
 
 trap 'echo "❌  Error occurred; aborting installation"' ERR
 
-# defaults
 VIVADO_BIN=${VIVADO_BIN:-$(command -v vivado)}
 YOSYS_ROOT=${YOSYS_ROOT:-"$HOME/.local/yosys"}
 SERVICE_NICE=${SERVICE_NICE:-10}
@@ -33,46 +32,55 @@ EOF
 }
 
 while [[ $# -gt 0 ]]; do
-  case $1 in
-    --vivado-path)      VIVADO_BIN="$2"; shift 2;;
-    --yosys-root)       YOSYS_ROOT="$2"; shift 2;;
-    --service)          MAKE_SERVICE=1; shift;;
-    --nice)             SERVICE_NICE="$2"; shift 2;;
-    --restart-sec)      SERVICE_RESTART_SEC="$2"; shift 2;;
-    *) usage;;
-  esac
+    case $1 in
+        --vivado-path)      VIVADO_BIN="$2"; shift 2;;
+        --yosys-root)       YOSYS_ROOT="$2"; shift 2;;
+        --service)          MAKE_SERVICE=1; shift;;
+        --nice)             SERVICE_NICE="$2"; shift 2;;
+        --restart-sec)      SERVICE_RESTART_SEC="$2"; shift 2;;
+        *) usage;;
+    esac
 done
 
 if [[ -z "$VIVADO_BIN" ]]; then
-  echo "❌ Vivado not found on PATH or --vivado-path not set" >&2
-  exit 1
+    echo "❌ Vivado not found on PATH or --vivado-path not set" >&2
+    exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-
 echo "🔨 Building fuznet…"
 if ! "$SCRIPT_DIR/build.sh"; then
-  echo "❌ Build failed" >&2
-  exit 1
+    echo "❌ Build failed" >&2
+    exit 1
 fi
 
 if command -v yosys &>/dev/null; then
-  echo "✔️  yosys on PATH"
-  YOSYS_ROOT=""
+    echo "✔️  yosys on PATH"
+    YOSYS_ROOT=""
+
 elif [[ -f "$YOSYS_ROOT/bin/yosys" ]]; then
-  echo "✔️  yosys found at $YOSYS_ROOT"
-  YOSYS_ROOT="$YOSYS_ROOT/bin"
+    echo "✔️  yosys found at $YOSYS_ROOT"
+    YOSYS_ROOT="$YOSYS_ROOT/bin"
+
 else
-  echo "📦 installing yosys to $YOSYS_ROOT"
-  mkdir -p "$YOSYS_ROOT"
-  ASSET=$(curl -fsSL \
-    "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/latest" \
-    | grep -Po '"browser_download_url": "\K.*linux-x64[^"]+')
-  curl -fSL "$ASSET" | tar xz -C "$YOSYS_ROOT" --strip-components=1
-  YOSYS_ROOT="$YOSYS_ROOT/bin"
-  echo "✔️  yosys installed"
+    echo "📦 installing yosys to $YOSYS_ROOT"
+    mkdir -p "$YOSYS_ROOT"
+
+    ASSET=$(curl -fsSL \
+        "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/latest" \
+        | grep -Po '"browser_download_url": "\K.*linux-x64[^"]+')
+
+    if [[ -z "$ASSET" ]]; then
+        echo "❌ Could not find latest Yosys release" >&2
+        exit 1
+    fi
+
+    echo "🔄 downloading $ASSET"
+    curl -fsSL "$ASSET" | tar xz -C "$YOSYS_ROOT" --strip-components=1
+    YOSYS_ROOT="$YOSYS_ROOT/bin"
+    echo "✔️  yosys installed"
 fi
 
 ENV_FILE="$PROJECT_ROOT/.env"
@@ -86,8 +94,8 @@ EOF
 echo "✔️  Wrote environment to $ENV_FILE"
 
 if [[ $MAKE_SERVICE -eq 0 ]]; then
-  echo "⚠️  Not creating systemd unit; run with --service to create"
-  exit 0
+    echo "⚠️  Not creating systemd unit; run with --service to create"
+    exit 0
 fi
 
 SERVICE_DIR="$HOME/.config/systemd/user"
@@ -117,7 +125,6 @@ EOF
 
 echo "✔️  Wrote service unit to $SERVICE_FILE"
 
-# 7) reload + enable + start
 echo "⟳ Reloading user systemd…"
 systemctl --user daemon-reload
 echo "⎈ Enabling fuznet.service…"
