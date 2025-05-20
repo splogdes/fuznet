@@ -10,7 +10,8 @@ set -euo pipefail
 # ────────────────  USER-TUNABLE KNOBS (override via env) ──────────────────
 TOP=${TOP:-top}
 
-OUTDIR=${OUTDIR:-"tmp"}
+DATE=$(date +%Y-%m-%d_%H-%M-%S)
+OUTDIR=${OUTDIR:-"tmp-$DATE"}
 LOG_DIR=${LOG_DIR:-"$OUTDIR/logs"}
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
 
@@ -26,11 +27,10 @@ PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
 FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
 
 SEED=${SEED:-$RANDOM}
-DATE=$(date +%Y-%m-%d_%H-%M-%S)
 # ───────────────────────────────────────────────────────────────────────────
 
 
-# ──────────────── Cleanup on exit ────────────────────────────────────────────────
+# ──────────────── Cleanup on exit ──────────────────────────────────────────
 
 START_TIME=$(date +%s)
 result_category=""
@@ -76,7 +76,8 @@ tmpl() {
 
 # ───────────────────────────────────────────────────────────────────────────
 
-mkdir -p "$OUTDIR" "$LOG_DIR"
+mkdir -p "$OUTDIR" 
+mkdir -p "$LOG_DIR"
 mkdir -p "$PERMANENT_LOGS"
 
 blue "┌───────────────────── run_equiv ─────────────────────"
