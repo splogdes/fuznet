@@ -6,9 +6,9 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 cd "$PROJECT_ROOT"
 
-if [[ -n "${YOSYS_DIR:-}" ]]; then
-    echo "YOSYS_DIR is set to $YOSYS_DIR"
-    export PATH="$YOSYS_DIR:$PATH"
+if [[ -n "${YOSYS_ROOT:-}" ]]; then
+    echo "YOSYS_ROOT is set to $YOSYS_ROOT"
+    export PATH="$YOSYS_ROOT:$PATH"
 fi
 
 while true; do
