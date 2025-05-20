@@ -10,6 +10,8 @@ set -euo pipefail
 #   - Writes systemd --user unit reading from .env
 # -----------------------------------------------------------------------------
 
+trap 'echo "❌  Error occurred; aborting installation"' ERR
+
 # defaults
 VIVADO_BIN=${VIVADO_BIN:-$(command -v vivado)}
 YOSYS_ROOT=${YOSYS_ROOT:-"$HOME/.local/yosys"}
@@ -19,10 +21,13 @@ MAKE_SERVICE=${MAKE_SERVICE:-0}
 
 usage(){
   cat<<EOF
-Usage: $0 [--vivado-path /path/to/vivado]
-          [--yosys-root /path/to/yosys-install]
-          [--nice N]            (default: $SERVICE_NICE)
-          [--restart-sec S]     (default: $SERVICE_RESTART_SEC)
+Usage: $0 
+
+    [--vivado-path /path/to/vivado]         (required)   
+    [--yosys-root /path/to/yosys-install]   (default: $YOSYS_ROOT)
+    [--service]                             (default: $MAKE_SERVICE)
+    [--nice N]                              (default: $SERVICE_NICE)
+    [--restart-sec S]                       (default: $SERVICE_RESTART_SEC)
 EOF
   exit 1
 }
@@ -56,13 +61,17 @@ fi
 if command -v yosys &>/dev/null; then
   echo "✔️  yosys on PATH"
   YOSYS_ROOT=""
+elif [[ -f "$YOSYS_ROOT/bin/yosys" ]]; then
+  echo "✔️  yosys found at $YOSYS_ROOT"
+  YOSYS_ROOT="$YOSYS_ROOT/bin"
 else
   echo "📦 installing yosys to $YOSYS_ROOT"
   mkdir -p "$YOSYS_ROOT"
   ASSET=$(curl -fsSL \
-    https://api.github.com/repos/YosysHQ/yosys/releases/latest \
+    "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/latest" \
     | grep -Po '"browser_download_url": "\K.*linux-x64[^"]+')
   curl -fSL "$ASSET" | tar xz -C "$YOSYS_ROOT" --strip-components=1
+  YOSYS_ROOT="$YOSYS_ROOT/bin"
   echo "✔️  yosys installed"
 fi
 
