@@ -40,7 +40,7 @@ LUT2:
     I1: { dir: input,  width: 1 }
     O:  { dir: output, width: 1 }
   params:
-    INIT: { type: hex, width: 4 }
+    INIT: { width: 4 }
   resource: { lc: 1 }
 
 FDRE:
@@ -52,6 +52,6 @@ FDRE:
     Q:  { dir: output, width: 1 }
     R:  { dir: input,  width: 1 }
   params:
-    INIT: { type: bin, width: 1 }
+    INIT: { width: 1 }
   combinational: false
   resource: { lc: 1 }
