@@ -1,8 +1,8 @@
 [settings]
 max_iter = 1000
-stop_iter_lamba = 30
-starting_input_nets_lamba = 2
-starting_undriven_nets_lamba = 0
+stop_iter_lambda = 20
+start_input_lambda = 2
+start_undriven_lambda = 2
 prob_sequential = 0
 
 [priorities]

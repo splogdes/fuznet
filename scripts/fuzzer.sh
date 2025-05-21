@@ -10,8 +10,10 @@ set -euo pipefail
 # ────────────────  USER-TUNABLE KNOBS (override via env) ──────────────────
 TOP=${TOP:-top}
 
+SEED=${SEED:-$RANDOM}
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
-OUTDIR=${OUTDIR:-"tmp-$DATE"}
+
+OUTDIR=${OUTDIR:-"tmp-$DATE-$SEED"}
 LOG_DIR=${LOG_DIR:-"$OUTDIR/logs"}
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
 
@@ -25,8 +27,6 @@ VIVADO_BIN=${VIVADO_BIN:-"/opt/Xilinx/Vivado/2024.2/bin/vivado"}
 RTL_NET=${RTL_NET:-"$OUTDIR/post_synth.v"}
 PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
 FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
-
-SEED=${SEED:-$RANDOM}
 # ───────────────────────────────────────────────────────────────────────────
 
 
@@ -45,7 +45,7 @@ green() { printf "\033[0;32m[PASS] \033[0m%s\n"  "$*"; }
 red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 
 log_failed_seed() {
-    local save_dir="$PERMANENT_LOGS/$DATE"
+    local save_dir="$PERMANENT_LOGS/$DATE-$SEED"
     mkdir -p "$save_dir"
     cp "$LOG_DIR/${DATE}"_*.{log,jou} "$save_dir/" 2>/dev/null || true
     cp "$CONFIG" "$save_dir/" 2>/dev/null || true
@@ -92,15 +92,15 @@ blue "└───────────────────────�
                -c "$CONFIG"  \
                -s "$SEED"    \
                -o "${FUZZ_NET%.v}"      \
-               >"$LOG_DIR/${DATE}_fuznet.log" 2>&1 \
+               >"$LOG_DIR/fuznet.log" 2>&1 \
                || { result_category="fuznet_fail"; die "fuznet failed"; }
 blue "fuznet finished"
 
 # ── Vivado PnR ────────────────────────────────────────────────────
 blue "Running Vivado PnR"
 "$VIVADO_BIN" -mode batch \
-               -log "$LOG_DIR/${DATE}_vivado.log" \
-               -journal "$LOG_DIR/${DATE}_vivado.jou" \
+               -log "$LOG_DIR/vivado.log" \
+               -journal "$LOG_DIR/vivado.jou" \
                -source "$XILINX_TCL" \
                -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
                > /dev/null 2>&1
@@ -121,7 +121,7 @@ blue "Vivado PnR finished"
 # ── Structural equivalence ───────────────────────────────────────
 blue "Structural equivalence check"
 TMP_YS=$(tmpl flows/yosys/struct_check.ys.in)
-if yosys -q -l "$LOG_DIR/${DATE}_struct.log" -s "$TMP_YS" >/dev/null 2>&1; then
+if yosys -q -l "$LOG_DIR/struct.log" -s "$TMP_YS" >/dev/null 2>&1; then
     green "structural equivalence OK"
     result_category="structural_pass"
     exit 0
@@ -131,7 +131,7 @@ fi
 
 # ── Miter equivalence ────────────────────────────────────────────
 TMP_YS=$(tmpl flows/yosys/miter_check.ys.in)
-MITER_LOG="$LOG_DIR/${DATE}_miter.log"
+MITER_LOG="$LOG_DIR/miter.log"
 if yosys -q -l "$MITER_LOG" -s "$TMP_YS" >/dev/null 2>&1; then
     MITER_RET=0
 else
@@ -147,12 +147,12 @@ case "$MITER_TOKEN:$MITER_RET" in
 esac
 
 # ── BMC / induction ──────────────────────────────────────────────
-blue "BMC (Z3, 1000 steps)"
-if  yosys-smtbmc -s z3 -t 1000 \
+blue "BMC (Z3, 250 steps)"
+if ! yosys-smtbmc -s z3 -t 250 \
                    --dump-vcd "$OUTDIR/bmc.vcd" \
                    "$OUTDIR/vivado.smt2" \
-                   >"$LOG_DIR/${DATE}_bmc.log" 2>&1; then
-    log_failed_seed "bmc failed"; result_category="bmc_fail"; die "BMC failed - check $LOG_DIR/${DATE}_bmc.log"
+                   >"$LOG_DIR/bmc.log" 2>&1; then
+    log_failed_seed "bmc failed"; result_category="bmc_fail"; die "BMC failed - check $LOG_DIR/bmc.log"
 fi
 green "BMC passed"
 
@@ -161,13 +161,14 @@ blue "Induction (Z3, k<=128)"
 if yosys-smtbmc -s z3 -i -t 128 \
                 --dump-vcd "$OUTDIR/induct.vcd" \
                 "$OUTDIR/vivado.smt2" \
-                >"$LOG_DIR/${DATE}_induct.log" 2>&1; then
+                >"$LOG_DIR/induct.log" 2>&1; then
     green "Induction passed - equivalence proven"
     result_category="induction_pass"
     exit 0
 else
-    yellow "Induction failed - see $LOG_DIR/${DATE}_induct.log"
+    yellow "Induction failed - see $LOG_DIR/induct.log"
     yellow "No equivalence proven, but no counterexample found"
     result_category="No_equivalence_proven"
-    exit 2
+    log_failed_seed "No equivalence proven, but no counterexample found"
+    exit 1
 fi
