@@ -1,6 +1,7 @@
 build/
-tmp/
+tmp*/
 logs/
 .Xil/
 .env
+fuznet.log
 clockInfo.txt
