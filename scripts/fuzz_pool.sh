@@ -19,8 +19,11 @@ for i in $(seq $workers); do
     (
         current_sleep=1
         export WORKER_ID=$i
+        
+        sleep $((RANDOM % 10))
+        
         while true; do
-            
+        
             if ! ./scripts/fuzzer.sh 2>&1 | sed -u "s/^/[w$i] /"; then
                 echo "[w$i] fuzzer.sh failed, retrying in $current_sleep seconds…"
                 sleep $current_sleep
