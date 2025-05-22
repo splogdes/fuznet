@@ -14,7 +14,8 @@ SEED=${SEED:-$RANDOM}
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
 OUTDIR=${OUTDIR:-"tmp-$DATE-$SEED"}
-LOG_DIR=${LOG_DIR:-"$OUTDIR/logs"}
+LOG_DIR="$OUTDIR/logs"
+
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
 
 LIBRARY=${LIBRARY:-hardware/cells/xilinx.yaml}
@@ -47,11 +48,7 @@ red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 log_failed_seed() {
     local save_dir="$PERMANENT_LOGS/$DATE-$SEED"
     mkdir -p "$save_dir"
-    cp -r "$LOG_DIR" "$save_dir/" 2>/dev/null || true
-    cp "$CONFIG" "$save_dir/" 2>/dev/null || true
-    cp "$LIBRARY" "$save_dir/" 2>/dev/null || true
-    cp "$XILINX_TCL" "$save_dir/" 2>/dev/null || true
-    find "$OUTDIR" -maxdepth 1 -type f -exec cp {} "$save_dir/" \; 2>/dev/null || true
+    cp -r "$OUTDIR"/* "$save_dir/" || true
     printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE" "$SEED" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
     red "Seed $SEED captured - detailed logs in $PERMANENT_LOGS"
 }
@@ -80,6 +77,12 @@ mkdir -p "$OUTDIR"
 mkdir -p "$LOG_DIR"
 mkdir -p "$PERMANENT_LOGS"
 
+cp "$LIBRARY" "$CONFIG" "$XILINX_TCL" "$OUTDIR/"
+
+LIBRARY_CP="$OUTDIR/$(basename "$LIBRARY")"
+CONFIG_CP="$OUTDIR/$(basename "$CONFIG")"
+XILINX_TCL_CP="$OUTDIR/$(basename "$XILINX_TCL")"
+
 blue "┌───────────────────── run_equiv ─────────────────────"
 blue "│ RTL  : $RTL_NET"
 blue "│ PNR  : $PNR_NET"
@@ -88,9 +91,10 @@ blue "│ SEED : $SEED"
 blue "└──────────────────────────────────────────────────────"
 
 # ── build & run fuznet ────────────────────────────────────────────
-./build/fuznet -l "$LIBRARY" \
-               -c "$CONFIG"  \
+./build/fuznet -l "$LIBRARY_CP" \
+               -c "$CONFIG_CP"  \
                -s "$SEED"    \
+               -v            \
                -o "${FUZZ_NET%.v}"      \
                >"$LOG_DIR/fuznet.log" 2>&1 \
                || { result_category="fuznet_fail"; die "fuznet failed"; }
@@ -102,7 +106,7 @@ VIVADO_RET=0
 "$VIVADO_BIN" -mode batch \
                -log "$LOG_DIR/vivado.log" \
                -journal "$LOG_DIR/vivado.jou" \
-               -source "$XILINX_TCL" \
+               -source "$XILINX_TCL_CP" \
                -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
                > /dev/null 2>&1 || VIVADO_RET=$?
 
