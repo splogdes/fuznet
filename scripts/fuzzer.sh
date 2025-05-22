@@ -39,7 +39,7 @@ START_TIME=$(date +%s)
 result_category=""
 trap 'END_TIME=$(date +%s); RUNTIME=$(( END_TIME - START_TIME )); TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S"); \
       if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,worker,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
-      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT
+      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"' EXIT
 
 # ────────────────  helpers  ────────────────────────────────────────────────
 blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
@@ -157,7 +157,7 @@ BMC_LOG="$LOG_DIR/bmc.log"
 yosys-smtbmc -s z3 -t 1000 \
                    --timeout 300 \
                    --dump-vcd "$OUTDIR/bmc.vcd" \
-                   "$OUTDIR/vivado.smt2" \
+                   "$OUTDIR/eq_top.smt2" \
                    >"$BMC_LOG" 2>&1 || BMC_RET=$?
 BMC_TOKEN=$(grep -oE 'timeout|PASSED|FAILED' "$BMC_LOG" || echo "UNKNOWN")
 
@@ -173,7 +173,7 @@ blue "Induction (Z3, k<=128, timeout 300s)"
 if yosys-smtbmc -s z3 -i -t 128 \
                 --timeout 300 \
                 --dump-vcd "$OUTDIR/induct.vcd" \
-                "$OUTDIR/vivado.smt2" \
+                "$OUTDIR/eq_top.smt2" \
                 >"$LOG_DIR/induct.log" 2>&1; then
     green "Induction passed - equivalence proven"
     result_category="induction_pass"
