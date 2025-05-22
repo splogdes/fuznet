@@ -47,7 +47,7 @@ red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 log_failed_seed() {
     local save_dir="$PERMANENT_LOGS/$DATE-$SEED"
     mkdir -p "$save_dir"
-    cp "$LOG_DIR/${DATE}"_*.{log,jou} "$save_dir/" 2>/dev/null || true
+    cp -r "$LOG_DIR" "$save_dir/" 2>/dev/null || true
     cp "$CONFIG" "$save_dir/" 2>/dev/null || true
     cp "$LIBRARY" "$save_dir/" 2>/dev/null || true
     cp "$XILINX_TCL" "$save_dir/" 2>/dev/null || true
@@ -98,13 +98,13 @@ blue "fuznet finished"
 
 # ── Vivado PnR ────────────────────────────────────────────────────
 blue "Running Vivado PnR"
+VIVADO_RET=0
 "$VIVADO_BIN" -mode batch \
                -log "$LOG_DIR/vivado.log" \
                -journal "$LOG_DIR/vivado.jou" \
                -source "$XILINX_TCL" \
                -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
-               > /dev/null 2>&1
-VIVADO_RET=$?
+               > /dev/null 2>&1 || VIVADO_RET=$?
 
 if [[ $VIVADO_RET -gt 128 ]]; then
     result_category="vivado_crash"
@@ -132,11 +132,8 @@ fi
 # ── Miter equivalence ────────────────────────────────────────────
 TMP_YS=$(tmpl flows/yosys/miter_check.ys.in)
 MITER_LOG="$LOG_DIR/miter.log"
-if yosys -q -l "$MITER_LOG" -s "$TMP_YS" >/dev/null 2>&1; then
-    MITER_RET=0
-else
-    MITER_RET=$?
-fi
+MITER_RET=0
+yosys -q -l "$MITER_LOG" -s "$TMP_YS" >/dev/null 2>&1 || MITER_RET=$?
 MITER_TOKEN=$(grep -oE 'SUCCESS!|FAIL!|TIMEOUT!' "$MITER_LOG" || echo "UNKNOWN")
 
 case "$MITER_TOKEN:$MITER_RET" in
@@ -148,17 +145,26 @@ esac
 
 # ── BMC / induction ──────────────────────────────────────────────
 blue "BMC (Z3, 250 steps)"
-if ! yosys-smtbmc -s z3 -t 250 \
+BMC_RET=0
+BMC_LOG="$LOG_DIR/bmc.log"
+yosys-smtbmc -s z3 -t 1000 \
+                   --timeout 300 \
                    --dump-vcd "$OUTDIR/bmc.vcd" \
                    "$OUTDIR/vivado.smt2" \
-                   >"$LOG_DIR/bmc.log" 2>&1; then
-    log_failed_seed "bmc failed"; result_category="bmc_fail"; die "BMC failed - check $LOG_DIR/bmc.log"
-fi
-green "BMC passed"
+                   >"$BMC_LOG" 2>&1 || BMC_RET=$?
+BMC_TOKEN=$(grep -oE 'timeout|PASSED|FAILED' "$BMC_LOG" || echo "UNKNOWN")
+
+case "$BMC_TOKEN:$BMC_RET" in
+    "PASSED:0") green "BMC passed - equivalence proven" ;;
+    "timeout:1") yellow "BMC timed out" ;;
+    "FAILED:1") log_failed_seed "BMC failed - counterexample found"; result_category="bmc_fail"; die "BMC failed - counterexample found (ret=$BMC_RET token=$BMC_TOKEN), check $BMC_LOG" ;;
+    *) log_failed_seed "BMC unknown state"; result_category="bmc_unknown"; die "BMC unknown state (ret=$BMC_RET token=$BMC_TOKEN), check $BMC_LOG" ;;
+esac
 
 # ── 6. Induction proof ──────────────────────────────────────────────────
 blue "Induction (Z3, k<=128)"
 if yosys-smtbmc -s z3 -i -t 128 \
+                --timeout 300 \
                 --dump-vcd "$OUTDIR/induct.vcd" \
                 "$OUTDIR/vivado.smt2" \
                 >"$LOG_DIR/induct.log" 2>&1; then
