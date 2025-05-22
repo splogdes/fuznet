@@ -17,6 +17,7 @@ YOSYS_ROOT=${YOSYS_ROOT:-"$HOME/.local/yosys"}
 SERVICE_NICE=${SERVICE_NICE:-10}
 SERVICE_RESTART_SEC=${SERVICE_RESTART_SEC:-10}
 MAKE_SERVICE=${MAKE_SERVICE:-0}
+FUZNET_WORKERS=${FUZNET_WORKERS:-1}
 
 usage(){
   cat<<EOF
@@ -27,6 +28,7 @@ Usage: $0
     [--service]                             (default: $MAKE_SERVICE)
     [--nice N]                              (default: $SERVICE_NICE)
     [--restart-sec S]                       (default: $SERVICE_RESTART_SEC)
+    [--workers N]                           (default: $FUZNET_WORKERS)
 EOF
   exit 1
 }
@@ -38,6 +40,7 @@ while [[ $# -gt 0 ]]; do
         --service)          MAKE_SERVICE=1; shift;;
         --nice)             SERVICE_NICE="$2"; shift 2;;
         --restart-sec)      SERVICE_RESTART_SEC="$2"; shift 2;;
+        --workers)          FUZNET_WORKERS="$2"; shift 2;;
         *) usage;;
     esac
 done
@@ -90,6 +93,7 @@ VIVADO_BIN="$VIVADO_BIN"
 YOSYS_ROOT="$YOSYS_ROOT"
 SERVICE_NICE="$SERVICE_NICE"
 SERVICE_RESTART_SEC="$SERVICE_RESTART_SEC"
+FUZNET_WORKERS="$FUZNET_WORKERS"
 EOF
 echo "✔️  Wrote environment to $ENV_FILE"
 
@@ -105,7 +109,7 @@ mkdir -p "$SERVICE_DIR"
 
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=Fuznet endless Vivado-fuzz equivalence loop
+Description=Fuznet endless Vivado-fuzz equivalence pool
 
 [Service]
 Type=simple
@@ -116,7 +120,7 @@ EnvironmentFile=$ENV_FILE
 StandardOutput=append:$PROJECT_ROOT/fuznet.log
 StandardError=append:$PROJECT_ROOT/fuznet.log
 
-ExecStart=/usr/bin/env bash -lc '$PROJECT_ROOT/scripts/fuzz_loop.sh'
+ExecStart=/usr/bin/env bash -lc '$PROJECT_ROOT/scripts/fuzz_pool.sh'
 
 Restart=always
 RestartSec=\${SERVICE_RESTART_SEC}

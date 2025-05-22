@@ -10,10 +10,12 @@ set -euo pipefail
 # ────────────────  USER-TUNABLE KNOBS (override via env) ──────────────────
 TOP=${TOP:-top}
 
+WORKER_ID=${WORKER_ID:-0}
+
 SEED=${SEED:-$RANDOM}
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
-OUTDIR=${OUTDIR:-"tmp-$DATE-$SEED"}
+OUTDIR=${OUTDIR:-"tmp-$DATE-s$SEED-w$WORKER_ID"}
 LOG_DIR="$OUTDIR/logs"
 
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
@@ -36,8 +38,8 @@ FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
 START_TIME=$(date +%s)
 result_category=""
 trap 'END_TIME=$(date +%s); RUNTIME=$(( END_TIME - START_TIME )); TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S"); \
-      if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
-      echo "$TIMESTAMP,$SEED,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT
+      if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,worker,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
+      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT
 
 # ────────────────  helpers  ────────────────────────────────────────────────
 blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
@@ -46,7 +48,7 @@ green() { printf "\033[0;32m[PASS] \033[0m%s\n"  "$*"; }
 red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 
 log_failed_seed() {
-    local save_dir="$PERMANENT_LOGS/$DATE-$SEED"
+    local save_dir="$PERMANENT_LOGS/$DATE-s$SEED-w$WORKER_ID"
     mkdir -p "$save_dir"
     cp -r "$OUTDIR"/* "$save_dir/" || true
     printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE" "$SEED" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
@@ -113,7 +115,8 @@ VIVADO_RET=0
 if [[ $VIVADO_RET -gt 128 ]]; then
     result_category="vivado_crash"
     log_failed_seed "Vivado crashed with signal (ret=$VIVADO_RET)"
-    die "Vivado Crashed (ret=$VIVADO_RET)"
+    red "Vivado Crashed (ret=$VIVADO_RET)"
+    exit 0
 elif [[ $VIVADO_RET -gt 0 ]]; then
     result_category="vivado_fail"
     die "Vivado failed (ret=$VIVADO_RET)"
@@ -143,12 +146,12 @@ MITER_TOKEN=$(grep -oE 'SUCCESS!|FAIL!|TIMEOUT!' "$MITER_LOG" || echo "UNKNOWN")
 case "$MITER_TOKEN:$MITER_RET" in
     "SUCCESS!:0") green "miter check passed"; result_category="miter_pass"; exit 0 ;;
     "TIMEOUT!:0") yellow "miter check timed out" ;;
-    "FAIL!:1")    log_failed_seed "miter check failed"; result_category="miter_fail"; die "miter check failed (ret=$MITER_RET token=$MITER_TOKEN), check $MITER_LOG" ;;
+    "FAIL!:1")    log_failed_seed "miter check failed"; result_category="miter_fail"; red "miter check failed (ret=$MITER_RET token=$MITER_TOKEN), check $MITER_LOG"; exit 0 ;;
     *)            log_failed_seed "miter check unknown"; result_category="miter_unknown"; die "miter unknown state (ret=$MITER_RET token=$MITER_TOKEN), check $MITER_LOG" ;;
 esac
 
 # ── BMC / induction ──────────────────────────────────────────────
-blue "BMC (Z3, 250 steps)"
+blue "BMC (Z3, 1000 steps, timeout 300s)"
 BMC_RET=0
 BMC_LOG="$LOG_DIR/bmc.log"
 yosys-smtbmc -s z3 -t 1000 \
@@ -161,12 +164,12 @@ BMC_TOKEN=$(grep -oE 'timeout|PASSED|FAILED' "$BMC_LOG" || echo "UNKNOWN")
 case "$BMC_TOKEN:$BMC_RET" in
     "PASSED:0") green "BMC passed - equivalence proven" ;;
     "timeout:1") yellow "BMC timed out" ;;
-    "FAILED:1") log_failed_seed "BMC failed - counterexample found"; result_category="bmc_fail"; die "BMC failed - counterexample found (ret=$BMC_RET token=$BMC_TOKEN), check $BMC_LOG" ;;
+    "FAILED:1") log_failed_seed "BMC failed - counterexample found"; result_category="bmc_fail"; red "BMC failed - counterexample found (ret=$BMC_RET token=$BMC_TOKEN), check $BMC_LOG"; exit 0 ;;
     *) log_failed_seed "BMC unknown state"; result_category="bmc_unknown"; die "BMC unknown state (ret=$BMC_RET token=$BMC_TOKEN), check $BMC_LOG" ;;
 esac
 
 # ── 6. Induction proof ──────────────────────────────────────────────────
-blue "Induction (Z3, k<=128)"
+blue "Induction (Z3, k<=128, timeout 300s)"
 if yosys-smtbmc -s z3 -i -t 128 \
                 --timeout 300 \
                 --dump-vcd "$OUTDIR/induct.vcd" \
@@ -180,5 +183,5 @@ else
     yellow "No equivalence proven, but no counterexample found"
     result_category="No_equivalence_proven"
     log_failed_seed "No equivalence proven, but no counterexample found"
-    exit 1
+    exit 0
 fi
