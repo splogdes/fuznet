@@ -14,6 +14,7 @@ trap 'echo "❌  Error occurred; aborting installation"' ERR
 
 VIVADO_BIN=${VIVADO_BIN:-$(command -v vivado)}
 OSS_CAD_SUITE=${OSS_CAD_SUITE:-"$HOME/.local/oss-cad-suite"}
+OSS_CAD_VERSION=${OSS_CAD_VERSION:-latest}
 SERVICE_NICE=${SERVICE_NICE:-10}
 SERVICE_RESTART_SEC=${SERVICE_RESTART_SEC:-10}
 MAKE_SERVICE=${MAKE_SERVICE:-0}
@@ -25,6 +26,7 @@ Usage: $0
 
     [--vivado-path /path/to/vivado]           (required)   
     [--oss-cad-root /path/to/yosys-install]   (default: $OSS_CAD_SUITE)
+    [--oss-cad-version version]               (default: $OSS_CAD_VERSION)
     [--service]                               (default: $MAKE_SERVICE)
     [--nice N]                                (default: $SERVICE_NICE)
     [--restart-sec S]                         (default: $SERVICE_RESTART_SEC)
@@ -37,6 +39,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --vivado-path)      VIVADO_BIN="$2"; shift 2;;
         --oss-cad-root)     OSS_CAD_SUITE="$2"; shift 2;;
+        --oss-cad-version)  OSS_CAD_VERSION="$2"; shift 2;;
         --service)          MAKE_SERVICE=1; shift;;
         --nice)             SERVICE_NICE="$2"; shift 2;;
         --restart-sec)      SERVICE_RESTART_SEC="$2"; shift 2;;
@@ -71,9 +74,17 @@ else
     echo "📦 installing oss-cad-suite to $OSS_CAD_SUITE"
     mkdir -p "$OSS_CAD_SUITE"
 
-    ASSET=$(curl -fsSL \
-        "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/latest" \
-        | grep -Po '"browser_download_url": "\K.*linux-x64[^"]+')
+    if [[ $OSS_CAD_VERSION == latest ]]; then
+        echo "🔄 downloading latest oss-cad-suite"
+        ASSET=$(curl -fsSL \
+            "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/latest" \
+            | grep -Po '"browser_download_url": "\K.*linux-x64[^"]+')
+    else
+        echo "🔄 downloading oss-cad-suite version $OSS_CAD_VERSION"
+        ASSET=$(curl -fsSL \
+            "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/tags/$OSS_CAD_VERSION" \
+            | grep -Po '"browser_download_url": "\K.*linux-x64[^"]+')
+    fi
 
     if [[ -z "$ASSET" ]]; then
         echo "❌ Could not find latest Yosys release" >&2
