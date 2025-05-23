@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <atomic>
 
 #include "library.hpp"
 #include "netlist.hpp"
