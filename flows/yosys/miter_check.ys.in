@@ -16,7 +16,8 @@ opt_clean; proc; memory; opt
 
 show      -format dot -prefix __OUT__/miter_flat
 
-write_verilog -noattr __OUT__/vivado.v
+write_json -noscopeinfo -selected __OUT__/eq_top.json
+write_verilog -noattr __OUT__/eq_top.v
 sat -dump_vcd __OUT__/counter_example.vcd -verify-no-timeout -timeout 1 -prove-asserts -tempinduct eq_top
 dffunmap
-write_smt2 __OUT__/vivado.smt2
+write_smt2 __OUT__/eq_top.smt2
