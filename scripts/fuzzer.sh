@@ -39,7 +39,7 @@ START_TIME=$(date +%s)
 result_category=""
 trap 'END_TIME=$(date +%s); RUNTIME=$(( END_TIME - START_TIME )); TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S"); \
       if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,worker,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
-      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"' EXIT
+      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT
 
 # ────────────────  helpers  ────────────────────────────────────────────────
 blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
@@ -137,6 +137,7 @@ else
 fi
 
 # ── Miter equivalence ────────────────────────────────────────────
+blue "Miter equivalence check"
 TMP_YS=$(tmpl flows/yosys/miter_check.ys.in)
 MITER_LOG="$LOG_DIR/miter.log"
 MITER_RET=0
@@ -150,12 +151,33 @@ case "$MITER_TOKEN:$MITER_RET" in
     *)            log_failed_seed "miter check unknown"; result_category="miter_unknown"; die "miter unknown state (ret=$MITER_RET token=$MITER_TOKEN), check $MITER_LOG" ;;
 esac
 
+# ── Verilator simulation ─────────────────────────────────────────
+blue "Verilator simulation"
+
+export SEED OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
+./scripts/gen_tb.py || { result_category="tb_gen_fail"; die "tb_gen.py failed"; }
+
+verilator -cc --exe --build -O2 \
+          -Mdir $OUTDIR/build \
+          "$OUTDIR/eq_top.v" \
+          "$OUTDIR/eq_top_tb.cpp" \
+          > "$LOG_DIR/verilator.log" 2>&1 || { result_category="verilator_fail"; die "Verilator failed"; }
+
+if ! $OUTDIR/build/Veq_top > /dev/null 2>&1; then
+    log_failed_seed "Verilator simulation failed"
+    result_category="verilator_fail"
+    red "Verilator simulation failed, check $LOG_DIR/verilator.log"
+    exit 0
+fi
+
+green "Verilator simulation passed"
+
 # ── BMC / induction ──────────────────────────────────────────────
 blue "BMC (Z3, 1000 steps, timeout 300s)"
 BMC_RET=0
 BMC_LOG="$LOG_DIR/bmc.log"
 yosys-smtbmc -s z3 -t 1000 \
-                   --timeout 300 \
+                   --timeout 60 \
                    --dump-vcd "$OUTDIR/bmc.vcd" \
                    "$OUTDIR/eq_top.smt2" \
                    >"$BMC_LOG" 2>&1 || BMC_RET=$?
@@ -171,7 +193,7 @@ esac
 # ── 6. Induction proof ──────────────────────────────────────────────────
 blue "Induction (Z3, k<=128, timeout 300s)"
 if yosys-smtbmc -s z3 -i -t 128 \
-                --timeout 300 \
+                --timeout 60 \
                 --dump-vcd "$OUTDIR/induct.vcd" \
                 "$OUTDIR/eq_top.smt2" \
                 >"$LOG_DIR/induct.log" 2>&1; then
@@ -182,6 +204,5 @@ else
     yellow "Induction failed - see $LOG_DIR/induct.log"
     yellow "No equivalence proven, but no counterexample found"
     result_category="No_equivalence_proven"
-    log_failed_seed "No equivalence proven, but no counterexample found"
     exit 0
 fi

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import json, os, sys, pathlib
+import json, os
 
 out_dir = os.getenv('OUTDIR')
 seed = os.getenv('SEED')
 cycles = os.getenv('CYCLES')
 
-json_file = os.path.join(out_dir, "vivado.json")
+json_file = os.path.join(out_dir, "eq_top.json")
 tb_file = os.path.join(out_dir, "eq_top_tb.cpp")
 
 with open(json_file, 'r') as f:
