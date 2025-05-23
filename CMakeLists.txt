@@ -5,27 +5,26 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(AVAILABLE_BUILD_TYPES Debug Release)
 
-option(BUILD_SHARED_LIBS "Build deps as shared libraries" OFF)
-if(NOT BUILD_SHARED_LIBS)
-  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+option(ENABLE_STATIC_LINK "Link executables statically"   OFF)
+
+if(ENABLE_STATIC_LINK)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)               # prefer/require *.a
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} -static -static-libstdc++ -static-libgcc")
+        message(STATUS "Static linking enabled for Release build")
+    endif()
 endif()
 
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_BUILD_TYPE Debug CACHE STRING
       "Choose the type of build (Debug or Release)" FORCE)
 endif()
-
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${AVAILABLE_BUILD_TYPES})
 message(STATUS "Configured for ${CMAKE_BUILD_TYPE} build")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(CMAKE_EXE_LINKER_FLAGS
-      "${CMAKE_EXE_LINKER_FLAGS} -static -static-libstdc++ -static-libgcc")
-endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG         "-g -O0 -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_RELEASE       "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 -Wall -Wextra")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 include(FetchContent)
 
