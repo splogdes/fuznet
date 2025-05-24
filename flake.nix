@@ -56,6 +56,7 @@
             python3
             cmake
             git
+            z3
             bashInteractive
           ];
           shellHook = ''echo "Welcome to the fuznet development shell!"'';
