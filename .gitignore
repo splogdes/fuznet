@@ -4,4 +4,5 @@ logs/
 .Xil/
 .env
 fuznet.log
+flake.lock
 clockInfo.txt
