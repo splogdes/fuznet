@@ -27,6 +27,8 @@ PRIMS=${PRIMS:-"+/xilinx/cells_map.v +/xilinx/cells_sim.v"}
 XILINX_TCL=${XILINX_TCL:-flows/vivado/impl.tcl}
 VIVADO_BIN=${VIVADO_BIN:-"/opt/Xilinx/Vivado/2024.2/bin/vivado"}
 
+FUZNET_BIN=${FUZNET_BIN:-"fuznet"}
+
 RTL_NET=${RTL_NET:-"$OUTDIR/post_synth.v"}
 PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
 FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
@@ -39,7 +41,7 @@ START_TIME=$(date +%s)
 result_category=""
 trap 'END_TIME=$(date +%s); RUNTIME=$(( END_TIME - START_TIME )); TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S"); \
       if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,worker,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
-      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT
+      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT SIGINT SIGTERM 
 
 # ────────────────  helpers  ────────────────────────────────────────────────
 blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
@@ -93,7 +95,7 @@ blue "│ SEED : $SEED"
 blue "└──────────────────────────────────────────────────────"
 
 # ── build & run fuznet ────────────────────────────────────────────
-./build/fuznet -l "$LIBRARY_CP" \
+"$FUZNET_BIN"  -l "$LIBRARY_CP" \
                -c "$CONFIG_CP"  \
                -s "$SEED"    \
                -v            \

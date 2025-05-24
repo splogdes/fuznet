@@ -1,0 +1,115 @@
+{
+  "nodes": {
+    "cli11-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1740659131,
+        "narHash": "sha256-73dfpZDnKl0cADM4LTP3/eDFhwCdiHbEaGRF7ZyWsdQ=",
+        "owner": "CLIUtils",
+        "repo": "CLI11",
+        "rev": "4160d259d961cd393fd8d67590a8c7d210207348",
+        "type": "github"
+      },
+      "original": {
+        "owner": "CLIUtils",
+        "ref": "v2.5.0",
+        "repo": "CLI11",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "inputs": {
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1748026106,
+        "narHash": "sha256-6m1Y3/4pVw1RWTsrkAK2VMYSzG4MMIj7sqUy7o8th1o=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "063f43f2dbdef86376cc29ad646c45c46e93234c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "cli11-src": "cli11-src",
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
+        "tomlplusplus-src": "tomlplusplus-src",
+        "yaml-cpp": "yaml-cpp"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "tomlplusplus-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697204382,
+        "narHash": "sha256-h5tbO0Rv2tZezY58yUbyRVpsfRjY3i+5TPkkxr6La8M=",
+        "owner": "marzer",
+        "repo": "tomlplusplus",
+        "rev": "30172438cee64926dc41fdd9c11fb3ba5b2ba9de",
+        "type": "github"
+      },
+      "original": {
+        "owner": "marzer",
+        "ref": "v3.4.0",
+        "repo": "tomlplusplus",
+        "type": "github"
+      }
+    },
+    "yaml-cpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1745963638,
+        "narHash": "sha256-GtUTbEaRR3+GfVkt3t8EsqBHVffVKOl8urtQTaHozIo=",
+        "owner": "jbeder",
+        "repo": "yaml-cpp",
+        "rev": "2f86d13775d119edbb69af52e5f566fd65c6953b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jbeder",
+        "ref": "master",
+        "repo": "yaml-cpp",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
