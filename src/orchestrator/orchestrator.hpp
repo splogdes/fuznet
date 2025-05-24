@@ -4,7 +4,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <atomic>
 
 #include "library.hpp"
 #include "netlist.hpp"
@@ -36,7 +35,6 @@ private:
     Netlist                         netlist;
     std::vector<Entry>              commands;
     std::discrete_distribution<int> weight_dist;
-    std::atomic<bool>               stop_flag{false};
 
     int    max_iter               = 0;
     int    stop_iter_lambda       = 0;
