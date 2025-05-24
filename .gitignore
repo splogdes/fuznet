@@ -5,5 +5,4 @@ logs/
 result/
 .env
 fuznet.log
-flake.lock
 clockInfo.txt

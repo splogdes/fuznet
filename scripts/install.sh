@@ -95,8 +95,7 @@ EnvironmentFile=$ENV_FILE
 StandardOutput=append:$PROJECT_ROOT/fuznet.log
 StandardError=append:$PROJECT_ROOT/fuznet.log
 
-ExecStart=/usr/bin/env nix develop "$PROJECT_ROOT"# --command \
-                           bash -lc './scripts/fuzz_pool.sh'
+ExecStart=/usr/bin/nix develop "$PROJECT_ROOT"# --command bash -lc './scripts/fuzz_pool.sh'
 
 Restart=always
 RestartSec=\${SERVICE_RESTART_SEC}

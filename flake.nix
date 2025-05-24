@@ -1,5 +1,5 @@
 {
-  description = "fuznet – Vivado fuzz / PnR / equiv flow (pure Nix)";
+  description = "fuznet - Vivado fuzz / PnR / equiv flow (pure Nix)";
 
   inputs = {
     nixpkgs.url     = "github:nixos/nixpkgs/nixos-unstable";
@@ -59,6 +59,7 @@
             z3
             bashInteractive
           ];
+          
           shellHook = ''echo "Welcome to the fuznet development shell!"'';
         };
       });
