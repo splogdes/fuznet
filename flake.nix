@@ -26,27 +26,37 @@
           yaml-cpp     = inputs.yaml-cpp;
         };
       in
-      {
-        packages.default = pkgs.stdenv.mkDerivation {
-          pname   = "fuznet";
-          version = "0.1.0";
-          src     = ./.;
+      rec {
+        packages = rec {
+          
+          fuznet = pkgs.stdenv.mkDerivation {
+            pname   = "fuznet";
+            version = "0.1.3";
+            src     = ./.;
 
-          nativeBuildInputs = with pkgs; [ cmake git ];
+            nativeBuildInputs = with pkgs; [ cmake ];
 
-          cmakeFlags = [
-            "-DCMAKE_BUILD_TYPE=Release"
-            "-DFETCHCONTENT_SOURCE_DIR_YAML_CPP=${cmakeDeps.yaml-cpp}"
-            "-DFETCHCONTENT_SOURCE_DIR_TOMLPLUSPLUS=${cmakeDeps.tomlplusplus}"
-            "-DFETCHCONTENT_SOURCE_DIR_CLI11=${cmakeDeps.cli11}"
-          ];
+            cmakeFlags = [
+              "-DCMAKE_BUILD_TYPE=Release"
+              "-DFETCHCONTENT_SOURCE_DIR_YAML_CPP=${cmakeDeps.yaml-cpp}"
+              "-DFETCHCONTENT_SOURCE_DIR_TOMLPLUSPLUS=${cmakeDeps.tomlplusplus}"
+              "-DFETCHCONTENT_SOURCE_DIR_CLI11=${cmakeDeps.cli11}"
+            ];
+          };
+
+
+          default = fuznet;
         };
 
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs = [ self.packages.${system}.default ];
-
+          nativeBuildInputs = [ packages.fuznet ];     
           packages = with pkgs; [
-            yosys verilator python3 cmake git bashInteractive yaml-cpp
+            yosys
+            verilator
+            python3
+            cmake
+            git
+            bashInteractive
           ];
           shellHook = ''echo "Welcome to the fuznet development shell!"'';
         };

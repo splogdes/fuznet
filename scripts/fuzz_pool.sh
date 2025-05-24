@@ -6,11 +6,6 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 cd "$PROJECT_ROOT"
 
-if [[ -n "${OSS_CAD_SUITE:-}" ]]; then
-    echo "[INFO] OSS_CAD_SUITE is set to $OSS_CAD_SUITE"
-    export PATH="$OSS_CAD_SUITE:$PATH"
-fi
-
 workers=${FUZNET_WORKERS:-1}
 echo "[POOL] launching $workers workers…"
 
