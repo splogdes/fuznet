@@ -111,9 +111,8 @@ void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, Net
 
             if (input_port->net_type == NetType::LOGIC) {
                 Net* source = sequential
-                                ?  get_random_net(
-                                    [&](const Net* n) { return comb_group.contains(n->id) && same_type(n); }
-                                ): get_random_net(
+                                ? get_random_net(same_type)
+                                : get_random_net(
                                     [&](const Net* n) { return !comb_group.contains(n->id) && same_type(n); }
                                 );
                 input_port->net = source;

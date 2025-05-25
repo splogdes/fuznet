@@ -126,7 +126,7 @@ elif [[ $VIVADO_RET -gt 0 ]]; then
     die "Vivado failed (ret=$VIVADO_RET)"
 fi
 
-rm -rf .Xil clockInfo.txt || true
+rm clockInfo.txt > /dev/null 2>&1 || true
 blue "Vivado PnR finished"
 
 # ── Structural equivalence ───────────────────────────────────────

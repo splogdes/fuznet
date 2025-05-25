@@ -574,6 +574,7 @@ SRLC16:
   combinational: false
   resource: { lc: 1 }
 
+# Vivado says this has a clk enable, im not sure
 SRLC16E:
   weight: 1
   ports:
