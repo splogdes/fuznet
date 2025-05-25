@@ -9,49 +9,622 @@
 #   combinational - if true, the cell is combinational default is false
 #   type - type of the port, can be ext_in, ext_out, ext_clk, clk
 
-OBUF:
+VCC:
   weight: 1
   ports:
-    I: { dir: input,  width: 1 }
-    O: { dir: output, width: 1, type: ext_out }
-  params:   {}
-  resource: { io: 1 }
+    P: { dir: output }
+
+GND:
+  weight: 1
+  ports:
+    G: { dir: output }
 
 IBUF:
   weight: 0
   ports:
-    I: { dir: input,  width: 1, type: ext_in }
-    O: { dir: output, width: 1 }
-  params:   {}
+    I: { dir: input, type: ext_in }
+    O: { dir: output }
   resource: { io: 1 }
+
+# IBUFG:
+#   weight: 0
+#   ports:
+#     I: { dir: input, type: ?? }
+#     O: { dir: output, type: ?? }
+#   resource: { io: 1 }
+
+OBUF:
+  weight: 1
+  ports:
+    I: { dir: input }
+    O: { dir: output, type: ext_out }
+  resource: { io: 1 }
+
+# Note: IOBUF is not supported in the current version of the library.
+# Unclear how to prove equivalence
+# IOBUF:
+#   weight: 0
+#   ports:
+#     IO: { dir: inout, type: ext_in_out }
+#     O:  { dir: output }
+#     I:  { dir: input }
+#     T:  { dir: input }
+#   resource: { io: 1 }
+
+# OBUFT:
+#   weight: 0
+#   ports:
+#     O: { dir: output, type: ext_out }
+#     I: { dir: input }
+#     T: { dir: input }
+#   resource: { io: 1 }
 
 BUFG:
   weight: 0
   ports:
-    I: { dir: input,  width: 1, type: ext_clk }
-    O: { dir: output, width: 1, type: clk }
-  params:   {}
+    I: { dir: input, type: ext_clk }
+    O: { dir: output, type: clk }
+  resource: { lc: 1 }
+
+# BUFGCTRL:
+#   weight: 0
+#   ports:
+#     O: { dir: output, type: clk }
+#     I0: { dir: input }
+#     I1: { dir: input }
+#     S0: { dir: input }
+#     S1: { dir: input }
+#     CE0: { dir: input }
+#     CE1: { dir: input }
+#     IGNORE0: { dir: input }
+#     IGNORE1: { dir: input }
+
+# BUFHCE:
+#   weight: 0
+#   ports:
+#     I: { dir: input }
+#     O: { dir: output, type: clk }
+#     CE: { dir: input }
+#   resource: { lc: 1 }
+
+INV :
+  weight: 1
+  ports:
+    I: { dir: input }
+    O: { dir: output }
+  resource: { lc: 1 }
+
+LUT1:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 2 }
   resource: { lc: 1 }
 
 LUT2:
-  weight: 2
+  weight: 1
   ports:
-    I0: { dir: input,  width: 1 }
-    I1: { dir: input,  width: 1 }
-    O:  { dir: output, width: 1 }
+    I0: { dir: input }
+    I1: { dir: input }
+    O:  { dir: output }
   params:
     INIT: { width: 4 }
   resource: { lc: 1 }
 
-FDRE:
-  weight: 3
+LUT3:
+  weight: 1
   ports:
-    C:  { dir: input,  width: 1, type: clk }
-    CE: { dir: input,  width: 1 }
-    D:  { dir: input,  width: 1 }
-    Q:  { dir: output, width: 1 }
-    R:  { dir: input,  width: 1 }
+    I0: { dir: input }
+    I1: { dir: input }
+    I2: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 8 }
+  resource: { lc: 1 }
+
+LUT4:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    I2: { dir: input }
+    I3: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 16 }
+  resource: { lc: 1 }
+
+LUT5:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    I2: { dir: input }
+    I3: { dir: input }
+    I4: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 32 }
+  resource: { lc: 1 }
+
+LUT6:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    I2: { dir: input }
+    I3: { dir: input }
+    I4: { dir: input }
+    I5: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 64 }
+  resource: { lc: 1 }
+
+LUT6_2:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    I2: { dir: input }
+    I3: { dir: input }
+    I4: { dir: input }
+    I5: { dir: input }
+    O5:  { dir: output }
+    O6:  { dir: output }
+  params:
+    INIT: { width: 64 }
+  resource: { lc: 2 }
+
+MUXCY:
+  weight: 1
+  ports:
+    CI: { dir: input }
+    DI: { dir: input }
+    S:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
+
+MUXF5:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    S:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
+
+MUXF6:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    S:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
+
+MUXF7:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    S:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
+
+MUXF8:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    S:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
+
+# Vivado does not recognize MUXF9 as a primitive cell
+# MUXF9:
+#   weight: 0
+#   ports:
+#     I0: { dir: input }
+#     I1: { dir: input }
+#     S:  { dir: input }
+#     O:  { dir: output }
+#   resource: { lc: 1 }
+
+XORCY:
+  weight: 1
+  ports:
+    CI: { dir: input }
+    LI:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
+
+# CARRY4:
+#   weight: 0
+#   ports:
+#     CO: { dir: output, width: 4 }
+#     O: { dir: output, width: 4 }
+#     CI: { dir: input , width: 4 }
+#     S: { dir: input, width: 4 }
+#   resource: { lc: 1 }
+
+# CARRY8:
+#   weight: 0
+#   ports:
+#     CO: { dir: output, width: 8 }
+#     O: { dir: output, width: 8 }
+#     CI: { dir: input }
+#     CI_TOP: { dir: input }
+#     DI: { dir: input, width: 8 }
+#     S: { dir: input, width: 8 }
+#   resource: { lc: 1 }
+
+# Vivado does not recognize ORCY as a primitive cell
+# ORCY:
+#   weight: 0
+#   ports:
+#     I: { dir: input }
+#     CI: { dir: input }
+#     O: { dir: output }
+#   resource: { lc: 1 }
+
+MULT_AND:
+  weight: 1
+  ports:
+    I0: { dir: input }
+    I1: { dir: input }
+    LO:  { dir: output }
+  resource: { lc: 1 }
+
+FDRE:
+  weight: 1
+  ports:
+    Q:  { dir: output }
+    C:  { dir: input, type: clk }
+    CE: { dir: input }
+    D:  { dir: input }
+    R:  { dir: input }
+  params:
+    INIT: { width: 1 }
+    IS_C_INVERTED: { width: 1 }
+    # IS_D_INVERTED: { width: 1 } # Not supported on some devices
+    # IS_R_INVERTED: { width: 1 } # Can't place shrug
+  combinational: false
+  resource: { lc: 1 }
+
+# From older versions of vivado
+FDRE_1:
+  weight: 1
+  ports:
+    Q:  { dir: output }
+    C:  { dir: input, type: clk }
+    CE: { dir: input }
+    D:  { dir: input }
+    R:  { dir: input }
   params:
     INIT: { width: 1 }
   combinational: false
   resource: { lc: 1 }
+    
+FDSE:
+  weight: 1
+  ports:
+    Q:  { dir: output }
+    C:  { dir: input, type: clk }
+    CE: { dir: input }
+    D:  { dir: input }
+    S:  { dir: input }
+  params:
+    INIT: { width: 1 }
+    IS_C_INVERTED: { width: 1 }
+    # IS_D_INVERTED: { width: 1 } # Not supported on some devices
+    # IS_S_INVERTED: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+FDSE_1:
+  weight: 1
+  ports:
+    Q:  { dir: output }
+    C:  { dir: input, type: clk }
+    CE: { dir: input }
+    D:  { dir: input }
+    S:  { dir: input }
+  params:
+    INIT: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+FDRSE:
+  weight: 1
+  ports:
+    Q:  { dir: output }
+    C:  { dir: input, type: clk }
+    CE: { dir: input }
+    D:  { dir: input }
+    R:  { dir: input }
+    S:  { dir: input }
+  params:
+    INIT: { width: 1 }
+    IS_C_INVERTED: { width: 1 }
+    # IS_D_INVERTED: { width: 1 }
+    # IS_R_INVERTED: { width: 1 }
+    # IS_S_INVERTED: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+FDRSE_1:
+  weight: 1
+  ports:
+    Q:  { dir: output }
+    C:  { dir: input, type: clk }
+    CE: { dir: input }
+    D:  { dir: input }
+    R:  { dir: input }
+    S:  { dir: input }
+  params:
+    INIT: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+# FDCE:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     C:   { dir: input, type: clk }
+#     CE:  { dir: input }
+#     CLR: { dir: input }
+#     D:   { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#     IS_C_INVERTED: { width: 1 }
+#     # IS_D_INVERTED: { width: 1 } # Not supported on some devices
+#     IS_CLR_INVERTED: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+
+# FDCE_1:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     C:   { dir: input, type: clk }
+#     CE:  { dir: input }
+#     CLR: { dir: input }
+#     D:   { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+
+# FDPE:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     C:   { dir: input, type: clk }
+#     CE:  { dir: input }
+#     D:   { dir: input }
+#     PRE: { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#     IS_C_INVERTED: { width: 1 }
+#     # IS_D_INVERTED: { width: 1 } # Not supported on some devices
+#     # IS_PRE_INVERTED: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+
+# FDPE_1:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     C:   { dir: input, type: clk }
+#     CE:  { dir: input }
+#     D:   { dir: input }
+#     PRE: { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+  
+# FDCPE:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     C:   { dir: input, type: clk }
+#     CE:  { dir: input }
+#     CLR: { dir: input }
+#     D:   { dir: input }
+#     PRE: { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#     IS_C_INVERTED: { width: 1 }
+#     IS_CLR_INVERTED: { width: 1 }
+#     IS_PRE_INVERTED: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+
+# FDCPE_1:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     C:   { dir: input, type: clk }
+#     CE:  { dir: input }
+#     CLR: { dir: input }
+#     D:   { dir: input }
+#     PRE: { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+
+# LDCE:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     CLR: { dir: input }
+#     D:   { dir: input }
+#     G:   { dir: input }
+#     GE:  { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#     # IS_CLR_INVERTED: { width: 1 }
+#     # IS_G_INVERTED: { width: 1 }
+#   resource: { lc: 1 }
+
+# LDPE:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     D:   { dir: input }
+#     G:   { dir: input }
+#     GE:  { dir: input }
+#     PRE: { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#     # IS_G_INVERTED: { width: 1 }
+#     # IS_PRE_INVERTED: { width: 1 }
+#   resource: { lc: 1 }
+
+# LDCPE:
+#   weight: 0
+#   ports:
+#     Q:   { dir: output }
+#     CLR: { dir: input }
+#     D:   { dir: input }
+#     G:   { dir: input }
+#     GE:  { dir: input }
+#     PRE: { dir: input }
+#   params:
+#     INIT: { width: 1 }
+#     IS_CLR_INVERTED: { width: 1 }
+#     IS_D_INVERTED: { width: 1 }
+#     IS_G_INVERTED: { width: 1 }
+#     IS_GE_INVERTED: { width: 1 }
+#     IS_PRE_INVERTED: { width: 1 }
+#   resource: { lc: 1 }
+
+AND2B1L:
+  weight: 1
+  ports:
+    O: { dir: output }
+    DI: { dir: input }
+    SRI: { dir: input }
+  params:
+    # IS_SRI_INVERTED: { width: 1 } # Not supported
+  resource: { lc: 1 }
+    
+OR2L:
+  weight: 1
+  ports:
+    O:   { dir: output }
+    DI:  { dir: input }
+    SRI: { dir: input }
+  params:
+    # IS_SRI_INVERTED: { width: 1 } # Not supported
+  resource: { lc: 1 }
+
+
+# No RAM cells atm
+
+SRL16:
+  weight: 1
+  ports:
+    Q: { dir: output }
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    D: { dir: input }
+    CLK: { dir: input, type: clk }
+  params:
+    INIT: { width: 16 }
+  combinational: false
+  resource: { lc: 1 }
+  
+SRL16E:
+  weight: 1
+  ports:
+    Q: { dir: output }
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    D: { dir: input }
+    CLK: { dir: input, type: clk }
+  params:
+    INIT: { width: 16 }
+    IS_CLK_INVERTED: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+SRLC16:
+  weight: 1
+  ports:
+    Q: { dir: output }
+    Q15: { dir: output }
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    CLK: { dir: input, type: clk }
+    D: { dir: input }
+  params:
+    INIT: { width: 16 }
+  combinational: false
+  resource: { lc: 1 }
+
+SRLC16E:
+  weight: 1
+  ports:
+    Q: { dir: output }
+    Q15: { dir: output }
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    CLK: { dir: input, type: clk }
+    D: { dir: input }
+  params:
+    INIT: { width: 16 }
+    IS_CLK_INVERTED: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+# SRLC32E:
+#   weight: 1
+#   ports:
+#     Q: { dir: output }
+#     Q31: { dir: output }
+#     A: { dir: input, width: 5 }
+#     CE: { dir: input }
+#     CLK: { dir: input, type: clk }
+#     D: { dir: input }
+#   params:
+#     INIT: { width: 32 }
+#     IS_CLK_INVERTED: { width: 1 }
+#   combinational: false
+#   resource: { lc: 1 }
+
+CFGLUT5:
+  weight: 1
+  ports:
+    CDO: { dir: output }
+    O5: { dir: output }
+    O6: { dir: output }
+    I4: { dir: input }
+    I3: { dir: input }
+    I2: { dir: input }
+    I1: { dir: input }
+    I0: { dir: input }
+    CDI: { dir: input }
+    CE: { dir: input }
+    CLK: { dir: input, type: clk }
+  params:
+    INIT: { width: 32 }
+    IS_CLK_INVERTED: { width: 1 }
+  combinational: false
+  resource: { lc: 1 }
+
+
+# No DSP cells atm

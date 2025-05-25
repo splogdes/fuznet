@@ -11,7 +11,7 @@ echo "[POOL] launching $workers workers…"
 
 POOL_PIDS=()
 
-trap 'echo "[POOL] Terminating workers..."; kill -- -$$; echo "[POOL] All workers terminated.";' EXIT
+trap 'echo "[POOL] Terminating workers..."; kill -- -$$' EXIT
 
 for i in $(seq $workers); do
     (

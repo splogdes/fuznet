@@ -161,6 +161,7 @@ export SEED OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
 
 verilator -cc --exe --build -O2 \
           -Mdir $OUTDIR/build \
+          -Wno-UNOPTFLAT \
           "$OUTDIR/eq_top.v" \
           "$OUTDIR/eq_top_tb.cpp" \
           > "$LOG_DIR/verilator.log" 2>&1 || { result_category="verilator_fail"; die "Verilator failed"; }

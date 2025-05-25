@@ -21,7 +21,7 @@ Library::Library(const std::string& filename, std::mt19937_64& rng)
             const std::string dir_str   = port_node["dir"].as<std::string>();
             const std::string type_str  = port_node["type"].as<std::string>("logic");
 
-            port_spec.width = port_node["width"].as<int>();
+            port_spec.width = port_node["width"].as<int>(1);
 
             if      (type_str == "clk")      port_spec.net_type = NetType::CLK;
             else if (type_str == "ext_clk")  port_spec.net_type = NetType::EXT_CLK;
