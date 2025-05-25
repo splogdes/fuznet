@@ -12,10 +12,12 @@ TOP=${TOP:-top}
 
 WORKER_ID=${WORKER_ID:-0}
 
-SEED=${SEED:-$RANDOM}
+SEED=${SEED:-$(od -An -N4 -tu4 < /dev/urandom)}
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
-OUTDIR=${OUTDIR:-"tmp-$DATE-s$SEED-w$WORKER_ID"}
+SEED_HEX=$(printf "0x%08x" "$SEED")
+
+OUTDIR=${OUTDIR:-"tmp-$DATE-$SEED_HEX-w$WORKER_ID"}
 LOG_DIR="$OUTDIR/logs"
 
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
@@ -41,7 +43,7 @@ START_TIME=$(date +%s)
 result_category=""
 trap 'END_TIME=$(date +%s); RUNTIME=$(( END_TIME - START_TIME )); TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S"); \
       if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,worker,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
-      echo "$TIMESTAMP,$SEED,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT SIGINT SIGTERM 
+      echo "$TIMESTAMP,$SEED_HEX,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT SIGINT SIGTERM 
 
 # ────────────────  helpers  ────────────────────────────────────────────────
 blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
@@ -50,11 +52,11 @@ green() { printf "\033[0;32m[PASS] \033[0m%s\n"  "$*"; }
 red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 
 log_failed_seed() {
-    local save_dir="$PERMANENT_LOGS/$DATE-s$SEED-w$WORKER_ID"
+    local save_dir="$PERMANENT_LOGS/$DATE-$SEED_HEX-w$WORKER_ID"
     mkdir -p "$save_dir"
     cp -r "$OUTDIR"/* "$save_dir/" || true
-    printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE" "$SEED" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
-    red "Seed $SEED captured - detailed logs in $PERMANENT_LOGS"
+    printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE" "$SEED_HEX" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
+    red "Seed $SEED_HEX captured - detailed logs in $PERMANENT_LOGS"
 }
 
 die() { red "$*"; log_failed_seed "$*" ; exit 1; }
@@ -91,7 +93,7 @@ blue "┌───────────────────── run_equ
 blue "│ RTL  : $RTL_NET"
 blue "│ PNR  : $PNR_NET"
 blue "│ PRIMS: $PRIMS"
-blue "│ SEED : $SEED"
+blue "│ SEED : $SEED_HEX"
 blue "└──────────────────────────────────────────────────────"
 
 # ── build & run fuznet ────────────────────────────────────────────
@@ -156,7 +158,7 @@ esac
 # ── Verilator simulation ─────────────────────────────────────────
 blue "Verilator simulation"
 
-export SEED OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
+export SEED=$SEED_HEX OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
 ./scripts/gen_tb.py || { result_category="tb_gen_fail"; die "tb_gen.py failed"; }
 
 verilator -cc --exe --build -O2 \
