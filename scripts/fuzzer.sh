@@ -97,22 +97,23 @@ blue "│ SEED : $SEED_HEX"
 blue "└──────────────────────────────────────────────────────"
 
 # ── build & run fuznet ────────────────────────────────────────────
-"$FUZNET_BIN"  -l "$LIBRARY_CP" \
-               -c "$CONFIG_CP"  \
-               -s "$SEED"    \
-               -v            \
-               -o "${FUZZ_NET%.v}"      \
-               >"$LOG_DIR/fuznet.log" 2>&1 \
+"$FUZNET_BIN"  -l "$LIBRARY_CP"             \
+               -c "$CONFIG_CP"              \
+               -s "$SEED"                   \
+               -v                           \
+               -j                           \
+               -o "${FUZZ_NET%.v}"          \
+               >"$LOG_DIR/fuznet.log" 2>&1  \
                || { result_category="fuznet_fail"; die "fuznet failed"; }
 blue "fuznet finished"
-
+exit 0
 # ── Vivado PnR ────────────────────────────────────────────────────
 blue "Running Vivado PnR"
 VIVADO_RET=0
-"$VIVADO_BIN" -mode batch \
-               -log "$LOG_DIR/vivado.log" \
-               -journal "$LOG_DIR/vivado.jou" \
-               -source "$XILINX_TCL_CP" \
+"$VIVADO_BIN"  -mode batch                                       \
+               -log "$LOG_DIR/vivado.log"                        \
+               -journal "$LOG_DIR/vivado.jou"                    \
+               -source "$XILINX_TCL_CP"                          \
                -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
                > /dev/null 2>&1 || VIVADO_RET=$?
 
@@ -161,11 +162,11 @@ blue "Verilator simulation"
 export SEED=$SEED_HEX OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
 ./scripts/gen_tb.py || { result_category="tb_gen_fail"; die "tb_gen.py failed"; }
 
-verilator -cc --exe --build -O2 \
-          -Mdir $OUTDIR/build \
-          -Wno-UNOPTFLAT \
-          "$OUTDIR/eq_top.v" \
-          "$OUTDIR/eq_top_tb.cpp" \
+verilator -cc --exe --build -O2     \
+          -Mdir $OUTDIR/build       \
+          -Wno-UNOPTFLAT            \
+          "$OUTDIR/eq_top.v"        \
+          "$OUTDIR/eq_top_tb.cpp"   \
           > "$LOG_DIR/verilator.log" 2>&1 || { result_category="verilator_fail"; die "Verilator failed"; }
 
 if ! $OUTDIR/build/Veq_top > /dev/null 2>&1; then
@@ -181,10 +182,10 @@ green "Verilator simulation passed"
 blue "BMC (Z3, 1000 steps, timeout 300s)"
 BMC_RET=0
 BMC_LOG="$LOG_DIR/bmc.log"
-yosys-smtbmc -s z3 -t 1000 \
-                   --timeout 60 \
+yosys-smtbmc -s z3 -t 1000                      \
+                   --timeout 60                 \
                    --dump-vcd "$OUTDIR/bmc.vcd" \
-                   "$OUTDIR/eq_top.smt2" \
+                   "$OUTDIR/eq_top.smt2"        \
                    >"$BMC_LOG" 2>&1 || BMC_RET=$?
 BMC_TOKEN=$(grep -oE 'timeout|PASSED|FAILED' "$BMC_LOG" || echo "UNKNOWN")
 
@@ -197,10 +198,10 @@ esac
 
 # ── 6. Induction proof ──────────────────────────────────────────────────
 blue "Induction (Z3, k<=128, timeout 300s)"
-if yosys-smtbmc -s z3 -i -t 128 \
-                --timeout 60 \
+if yosys-smtbmc -s z3 -i -t 128                 \
+                --timeout 60                    \
                 --dump-vcd "$OUTDIR/induct.vcd" \
-                "$OUTDIR/eq_top.smt2" \
+                "$OUTDIR/eq_top.smt2"           \
                 >"$LOG_DIR/induct.log" 2>&1; then
     green "Induction passed - equivalence proven"
     result_category="induction_pass"

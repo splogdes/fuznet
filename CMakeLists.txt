@@ -41,9 +41,13 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
   GIT_TAG        v2.5.0
 )
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        v3.11.3
+)
 
-
-FetchContent_MakeAvailable(tomlplusplus yaml_cpp CLI11)
+FetchContent_MakeAvailable(tomlplusplus yaml_cpp CLI11 json)
 
 add_subdirectory(src/core)
 add_subdirectory(src/netlist)

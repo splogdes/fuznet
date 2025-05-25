@@ -53,6 +53,15 @@ struct Module {
     std::string lable(int width = 0) const;
 };
 
+struct NetlistStats {
+    int input_nets      = 0;
+    int output_nets     = 0;
+    int total_nets      = 0;
+    int comb_modules    = 0;
+    int seq_modules     = 0;
+    int total_modules   = 0;
+};
+
 class Netlist {
 public:
     Netlist(Library& lib, std::mt19937_64& rng);
@@ -69,6 +78,7 @@ public:
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
 
     void print(bool only_stats = true) const;
+    NetlistStats get_stats() const;
 
     Net* make_net(std::string explicit_name = "");
 

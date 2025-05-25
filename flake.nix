@@ -13,6 +13,10 @@
 
     cli11-src.url = "github:CLIUtils/CLI11/v2.5.0";
     cli11-src.flake = false;
+
+    json.url = "github:nlohmann/json/v3.11.2";
+    json.flake = false;
+
   };
 
   outputs = inputs @ { self, nixpkgs, flake-utils, ... }:
@@ -24,6 +28,7 @@
           tomlplusplus = inputs.tomlplusplus-src;
           cli11        = inputs.cli11-src;
           yaml-cpp     = inputs.yaml-cpp;
+          json         = inputs.json;
         };
       in
       rec {
@@ -41,6 +46,7 @@
               "-DFETCHCONTENT_SOURCE_DIR_YAML_CPP=${cmakeDeps.yaml-cpp}"
               "-DFETCHCONTENT_SOURCE_DIR_TOMLPLUSPLUS=${cmakeDeps.tomlplusplus}"
               "-DFETCHCONTENT_SOURCE_DIR_CLI11=${cmakeDeps.cli11}"
+              "-DFETCHCONTENT_SOURCE_DIR_JSON=${cmakeDeps.json}"
             ];
           };
 

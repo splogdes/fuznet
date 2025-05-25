@@ -6,8 +6,8 @@
 #include <iostream>
 #include <random>
 #include <thread>
-
 #include <toml++/toml.h>
+#include <nlohmann/json.hpp>
 
 using namespace std::chrono_literals;
 
@@ -16,11 +16,18 @@ namespace fuznet {
 Orchestrator::Orchestrator(const std::string& lib_yaml,
                            const std::string& config_toml,
                            unsigned           seed,
-                           bool               verbose)
-    : rng(seed),
+                           bool               verbose,
+                           bool               animate,
+                           bool               json_stats)
+    : library_yaml(lib_yaml),
+      config_toml(config_toml),
+      seed(seed),
+      rng(seed),
       library(lib_yaml, rng),
       netlist(library, rng),
-      verbose(verbose) 
+      verbose(verbose),
+      animate(animate),
+      json_stats(json_stats)
     {
 
     commands = {
@@ -32,7 +39,7 @@ Orchestrator::Orchestrator(const std::string& lib_yaml,
         { new BufferUnconnectedOutputs(netlist),   1.0 }
     };
 
-    load_config(config_toml);
+    load_config();
 
     std::poisson_distribution<int> undriven_dist (start_undriven_lambda);
     std::poisson_distribution<int> input_dist    (start_input_lambda);
@@ -45,8 +52,8 @@ Orchestrator::Orchestrator(const std::string& lib_yaml,
     weight_dist = std::discrete_distribution<int>(weights.begin(), weights.end());
 }
 
-void Orchestrator::load_config(const std::string& toml_path) {
-    auto cfg = toml::parse_file(toml_path);
+void Orchestrator::load_config() {
+    auto cfg = toml::parse_file(config_toml);
 
     for (auto& entry : commands) {
         auto node = entry.cmd->name();
@@ -76,7 +83,7 @@ void Orchestrator::load_config(const std::string& toml_path) {
 
     if (!verbose) return;
 
-    std::cout << "\n=== settings: " << toml_path << " ===\n";
+    std::cout << "\n=== settings: " << config_toml << " ===\n";
     std::cout << "max_iter:                 " << max_iter              << '\n';
     std::cout << "stop_iter_lambda:         " << stop_iter_lambda      << '\n';
     std::cout << "start_input_lambda:       " << start_input_lambda    << '\n';
@@ -89,7 +96,7 @@ void Orchestrator::load_config(const std::string& toml_path) {
     std::cout << "======================================\n\n";
 }
 
-void Orchestrator::run(const std::string& output_prefix, bool animate) {
+void Orchestrator::run(const std::string& output_prefix) {
     std::poisson_distribution<int> stop_dist(stop_iter_lambda);
     int iterations = std::min(stop_dist(rng), max_iter);
 
@@ -116,11 +123,56 @@ void Orchestrator::run(const std::string& output_prefix, bool animate) {
     
     dump_dot();
 
-    if(!verbose) return;
+    if(verbose) {
+        std::cout << "======== Netlist Generated =========\n";
+        netlist.print();
+        std::cout << "====================================\n\n";
+    }
+
+    if (json_stats)
+        json_dump(output_prefix);
+}
+
+void Orchestrator::json_dump(const std::string& output_prefix) const {
+    nlohmann::json json_data;
+
+    json_data["library"] = library_yaml;
+    json_data["config"] = config_toml;
+    json_data["seed"] = seed;
     
-    std::cout << "======== Netlist Generated =========\n";
-    netlist.print();
-    std::cout << "====================================\n\n";
+    
+    json_data["settings"] = {
+        {"max_iter", max_iter},
+        {"stop_iter_lambda", stop_iter_lambda},
+        {"start_input_lambda", start_input_lambda},
+        {"start_undriven_lambda", start_undriven_lambda},
+        {"prob_sequential", seq_probability}
+    };
+    
+    for (const auto& entry : commands) {
+        json_data["commands"].push_back({
+            {"name", entry.cmd->name()},
+            {"weight", entry.weight}
+        });
+    }
+
+    auto stats = netlist.get_stats();
+
+    json_data["netlist_stats"] = {
+        {"input_nets", stats.input_nets},
+        {"output_nets", stats.output_nets},
+        {"total_nets", stats.total_nets},
+        {"comb_modules", stats.comb_modules},
+        {"seq_modules", stats.seq_modules},
+        {"total_modules", stats.total_modules}
+    };
+
+    std::ofstream json_file(output_prefix + "_stats.json");
+    json_file << std::setw(4) << json_data << std::endl;
+    json_file.close();
+    if (verbose) {
+        std::cout << "JSON stats written to: " << output_prefix << ".json\n";
+    }
 }
 
 Orchestrator::~Orchestrator() {

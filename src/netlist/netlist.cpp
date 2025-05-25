@@ -385,29 +385,18 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const 
 }
 
 void Netlist::print(bool only_stats) const {
-    int in_nets  = 0;
-    int out_nets = 0;
-
-    for (const auto& net : nets)
-        if      (net->net_type == NetType::EXT_IN)  ++in_nets;
-        else if (net->net_type == NetType::EXT_OUT) ++out_nets;
-
-    int comb_modules = 0;
-    int seq_modules  = 0;
-
-    for (const auto& module : modules)
-        if      (module->spec.combinational) ++comb_modules;
-        else                                 ++seq_modules;
+    
+    NetlistStats stats = get_stats();
 
     std::cout << "+--------------------+-------+\n"
               << "| Metric             | Count |\n"
               << "+--------------------+-------+\n"
-              << "| Input nets         | " << std::setw(5) << in_nets        << " |\n"
-              << "| Output nets        | " << std::setw(5) << out_nets       << " |\n"
-              << "| Total nets         | " << std::setw(5) << nets.size()    << " |\n"
-              << "| Combinational mods | " << std::setw(5) << comb_modules   << " |\n"
-              << "| Sequential mods    | " << std::setw(5) << seq_modules    << " |\n"
-              << "| Total modules      | " << std::setw(5) << modules.size() << " |\n"
+              << "| Input nets         | " << std::setw(5) << stats.input_nets     << " |\n"
+              << "| Output nets        | " << std::setw(5) << stats.output_nets    << " |\n"
+              << "| Total nets         | " << std::setw(5) << stats.total_nets     << " |\n"
+              << "| Combinational mods | " << std::setw(5) << stats.comb_modules   << " |\n"
+              << "| Sequential mods    | " << std::setw(5) << stats.seq_modules    << " |\n"
+              << "| Total modules      | " << std::setw(5) << stats.total_modules  << " |\n"
               << "+--------------------+-------+\n";
 
     if (only_stats) return;
@@ -425,4 +414,21 @@ void Netlist::print(bool only_stats) const {
                       << "  net " << std::setw(4) << port_ptr->net->id
                       << " (" << static_cast<int>(port_ptr->net_type) << ")\n";
     }
+}
+
+NetlistStats Netlist::get_stats() const {
+    NetlistStats stats;
+    for (const auto& net_ptr : nets)
+        if      (net_ptr->net_type == NetType::EXT_IN)  ++stats.input_nets;
+        else if (net_ptr->net_type == NetType::EXT_OUT) ++stats.output_nets;
+        
+    stats.total_nets = static_cast<int>(nets.size());
+
+    for (const auto& module_ptr : modules)
+        if   (module_ptr->spec.combinational) ++stats.comb_modules;
+        else                                  ++stats.seq_modules;
+
+    stats.total_modules = static_cast<int>(modules.size());
+
+    return stats;
 }

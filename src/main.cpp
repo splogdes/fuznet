@@ -14,9 +14,10 @@ int main(int argc, char** argv) {
         std::string out_prefix   = "output/output";
         std::string seed_str     = std::to_string(std::random_device{}());
 
-        bool animate = false;
-        bool verbose = false;
-        bool show_ver = false;
+        bool animate    = false;
+        bool verbose    = false;
+        bool show_ver   = false;
+        bool json_stats = false;
 
         app.add_option("-l,--lib",     lib_cfg,      "Cell library YAML");
         app.add_option("-c,--config",  settings_cfg, "Settings TOML");
@@ -24,6 +25,7 @@ int main(int argc, char** argv) {
         app.add_option("-o,--output",  out_prefix,   "Output prefix");
         app.add_flag  ("-a,--animate", animate,      "Write DOT after each step");
         app.add_flag  ("-v,--verbose", verbose,      "Print chosen options");
+        app.add_flag  ("-j,--json",    json_stats,   "Write JSON stats");
         app.add_flag  ("--version",    show_ver,     "Show version");
 
         CLI11_PARSE(app, argc, argv);
@@ -41,8 +43,8 @@ int main(int argc, char** argv) {
 
         unsigned seed = std::stoul(seed_str);
 
-        fuznet::Orchestrator orch(lib_cfg, settings_cfg, seed, verbose);
-        orch.run(out_prefix, animate);
+        fuznet::Orchestrator orch(lib_cfg, settings_cfg, seed, verbose, animate, json_stats);
+        orch.run(out_prefix);
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << '\n';
