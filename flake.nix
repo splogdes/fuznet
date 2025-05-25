@@ -63,6 +63,7 @@
             cmake
             git
             z3
+            jq
             bashInteractive
           ];
           

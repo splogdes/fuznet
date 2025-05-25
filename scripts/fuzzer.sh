@@ -34,6 +34,8 @@ FUZNET_BIN=${FUZNET_BIN:-"fuznet"}
 RTL_NET=${RTL_NET:-"$OUTDIR/post_synth.v"}
 PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
 FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
+
+USE_SMTBMC=${USE_SMTBMC:-0}
 # ───────────────────────────────────────────────────────────────────────────
 
 
@@ -41,9 +43,46 @@ FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
 
 START_TIME=$(date +%s)
 result_category=""
-trap 'END_TIME=$(date +%s); RUNTIME=$(( END_TIME - START_TIME )); TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S"); \
-      if [ ! -f "$PERMANENT_LOGS/results.csv" ]; then echo "timestamp,worker,seed,category,runtime" >> "$PERMANENT_LOGS/results.csv"; fi; \
-      echo "$TIMESTAMP,$SEED_HEX,$WORKER_ID,${result_category:-unknown},$RUNTIME" >> "$PERMANENT_LOGS/results.csv"; rm -r $OUTDIR' EXIT SIGINT SIGTERM 
+
+log_stats_on_exit() {
+    local end_time=$(date +%s)
+    local runtime=$(( end_time - START_TIME ))
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+
+    local fuznet_stats="${FUZZ_NET%.v}_stats.json"
+
+    mkdir -p "$PERMANENT_LOGS"
+    local results_csv="$PERMANENT_LOGS/results.csv"
+    
+    if [ ! -f $results_csv ]; then
+        echo "timestamp,worker,seed,category,runtime," \
+             "input_nets,output_nets,total_nets," \
+             "comb_modules,seq_modules,total_modules" \
+             > "$PERMANENT_LOGS/results.csv"
+    fi
+
+    local input_nets="N/A" output_nets="N/A" total_nets="N/A"
+    local comb_modules="N/A" seq_modules="N/A" total_modules="N/A"
+    
+    if [ -f "$fuznet_stats" ]; then
+        input_nets=$(   jq -r '.netlist_stats.input_nets'      "$fuznet_stats" )
+        output_nets=$(  jq -r '.netlist_stats.output_nets'     "$fuznet_stats" )
+        total_nets=$(   jq -r '.netlist_stats.total_nets'      "$fuznet_stats" )
+        comb_modules=$( jq -r '.netlist_stats.comb_modules'    "$fuznet_stats" )
+        seq_modules=$(  jq -r '.netlist_stats.seq_modules'     "$fuznet_stats" )
+        total_modules=$(jq -r '.netlist_stats.total_modules'   "$fuznet_stats" )
+    fi
+        
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+        "$timestamp" "$WORKER_ID" "$SEED_HEX" "${result_category:-unknown}" "$runtime" \
+        "$input_nets" "$output_nets" "$total_nets" \
+        "$comb_modules" "$seq_modules" "$total_modules" \
+        >> "$results_csv"
+
+    rm -rf $OUTDIR
+}
+
+trap 'log_stats_on_exit' EXIT SIGINT SIGTERM 
 
 # ────────────────  helpers  ────────────────────────────────────────────────
 blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
@@ -81,7 +120,6 @@ tmpl() {
 
 mkdir -p "$OUTDIR" 
 mkdir -p "$LOG_DIR"
-mkdir -p "$PERMANENT_LOGS"
 
 cp "$LIBRARY" "$CONFIG" "$XILINX_TCL" "$OUTDIR/"
 
@@ -106,7 +144,7 @@ blue "└───────────────────────�
                >"$LOG_DIR/fuznet.log" 2>&1  \
                || { result_category="fuznet_fail"; die "fuznet failed"; }
 blue "fuznet finished"
-exit 0
+
 # ── Vivado PnR ────────────────────────────────────────────────────
 blue "Running Vivado PnR"
 VIVADO_RET=0
@@ -177,6 +215,11 @@ if ! $OUTDIR/build/Veq_top > /dev/null 2>&1; then
 fi
 
 green "Verilator simulation passed"
+
+if [[ $USE_SMTBMC -eq 0 ]]; then
+    result_category="verilator_pass"
+    exit 0
+fi
 
 # ── BMC / induction ──────────────────────────────────────────────
 blue "BMC (Z3, 1000 steps, timeout 300s)"
