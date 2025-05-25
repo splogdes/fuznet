@@ -1,10 +1,12 @@
+read_verilog -lib __PRIMS__
+
 read_verilog  __RTL__
 rename __TOP__ gold
+show -format dot -prefix __OUT__/synth
 
 read_verilog  __PNR__
 rename __TOP__ gate
-
-read_verilog -lib __PRIMS__
+show -format dot -prefix __OUT__/impl
 
 equiv_make gold gate equiv_top
 
