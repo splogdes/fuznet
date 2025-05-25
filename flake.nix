@@ -14,7 +14,7 @@
     cli11-src.url = "github:CLIUtils/CLI11/v2.5.0";
     cli11-src.flake = false;
 
-    json.url = "github:nlohmann/json/v3.11.2";
+    json.url = "github:nlohmann/json/v3.11.3";
     json.flake = false;
 
   };
@@ -36,7 +36,7 @@
           
           fuznet = pkgs.stdenv.mkDerivation {
             pname   = "fuznet";
-            version = "0.1.3";
+            version = "0.2.0";
             src     = ./.;
 
             nativeBuildInputs = with pkgs; [ cmake ];

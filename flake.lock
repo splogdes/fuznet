@@ -38,16 +38,16 @@
     "json": {
       "flake": false,
       "locked": {
-        "lastModified": 1660309566,
-        "narHash": "sha256-SUdhIV7tjtacf5DkoWk9cnkfyMlrkg8ZU7XnPZd22Tw=",
+        "lastModified": 1701207391,
+        "narHash": "sha256-7F0Jon+1oWL7uqet5i1IgHX0fUw/+z0QwEcA3zs5xHg=",
         "owner": "nlohmann",
         "repo": "json",
-        "rev": "bc889afb4c5bf1c0d8ee29ef35eaaf4c8bef8a5d",
+        "rev": "9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03",
         "type": "github"
       },
       "original": {
         "owner": "nlohmann",
-        "ref": "v3.11.2",
+        "ref": "v3.11.3",
         "repo": "json",
         "type": "github"
       }
