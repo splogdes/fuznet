@@ -55,9 +55,7 @@ log_stats_on_exit() {
     local results_csv="$PERMANENT_LOGS/results.csv"
     
     if [ ! -f $results_csv ]; then
-        echo "timestamp,worker,seed,category,runtime," \
-             "input_nets,output_nets,total_nets," \
-             "comb_modules,seq_modules,total_modules" \
+        echo "timestamp,worker,seed,category,runtime,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules" \
              > "$PERMANENT_LOGS/results.csv"
     fi
 
