@@ -56,8 +56,12 @@ Netlist::Netlist(Library& library_ref, std::mt19937_64& rng)
     clock_net->net_type = NetType::EXT_CLK;
     clock_net->name     = "clk";
 
-    add_buffer(input_net, lib.get_module("IBUF"));
-    add_buffer(clock_net, lib.get_module("BUFG"));
+    add_buffer(
+        input_net, lib.get_random_buffer(NetType::EXT_IN, NetType::LOGIC)
+    );
+    add_buffer(
+        clock_net, lib.get_random_buffer(NetType::EXT_CLK, NetType::CLK)
+    );
 }
 
 Netlist::~Netlist() = default;
@@ -66,7 +70,10 @@ void Netlist::add_external_nets(size_t number) {
     for (size_t i = 0; i < number; ++i) {
         Net* ext_net = make_net();
         ext_net->net_type = NetType::EXT_IN;
-        add_buffer(ext_net, lib.get_module("IBUF"));
+
+        add_buffer(
+            ext_net, lib.get_random_buffer(NetType::EXT_IN, NetType::LOGIC)
+        );
     }
 }
 
@@ -159,7 +166,9 @@ void Netlist::buffer_unconnected_outputs() {
             logic_nets_without_sinks.push_back(net_ptr.get());
 
     for (Net* net_ptr : logic_nets_without_sinks)
-        add_buffer(net_ptr, lib.get_module("OBUF"));
+        add_buffer(
+            net_ptr, lib.get_random_buffer(net_ptr->net_type, NetType::LOGIC)
+        );
 }
 
 void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec) {

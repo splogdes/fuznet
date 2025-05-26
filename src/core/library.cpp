@@ -93,3 +93,13 @@ const ModuleSpec& Library::get_random_module(std::function<bool (const ModuleSpe
     std::discrete_distribution<int> dist(weights.begin(), weights.end());
     return get_module(names[dist(rng)]);
 }
+
+const ModuleSpec& Library::get_random_buffer(NetType input_type, NetType output_type) const {
+    auto filter = [&](const ModuleSpec& ms) {
+        return ms.inputs.size() == 1 &&
+               ms.outputs.size() == 1 &&
+               ms.inputs[0].net_type == input_type &&
+               ms.outputs[0].net_type == output_type;
+    };
+    return get_random_module(filter);
+}

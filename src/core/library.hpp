@@ -14,6 +14,7 @@ public:
 
     const ModuleSpec& get_module        (const std::string& name) const;
     const ModuleSpec& get_random_module (std::function<bool (const ModuleSpec& ms)> filter = nullptr) const;
+    const ModuleSpec& get_random_buffer (NetType input_type, NetType output_type) const;
 
 private:
     std::map<std::string, ModuleSpec>           modules;
