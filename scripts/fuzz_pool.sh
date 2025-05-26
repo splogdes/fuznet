@@ -21,9 +21,10 @@ for i in $(seq $workers); do
         sleep $((i - 1)) 
         
         while true; do
-        
-            if ! ./scripts/fuzzer.sh 2>&1 | sed -u "s/^/[W$i] /"; then
-                echo "[W$i] fuzzer.sh failed, retrying in $current_sleep seconds…"
+            padded_id=$(printf "%0${#workers}d" $i)
+            
+            if ! ./scripts/fuzzer.sh 2>&1 | sed -u "s/^/[W$padded_id] /"; then
+                echo "[W$padded_id] fuzzer.sh failed, retrying in $current_sleep seconds…"
                 sleep $current_sleep
                 current_sleep=$((current_sleep * 2))
             fi
