@@ -18,7 +18,7 @@ for i in $(seq $workers); do
         current_sleep=1
         export WORKER_ID=$i
         
-        sleep $((RANDOM % 10))
+        sleep $((i - 1)) 
         
         while true; do
         
