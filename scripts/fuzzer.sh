@@ -24,7 +24,7 @@ PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
 
 LIBRARY=${LIBRARY:-hardware/cells/xilinx.yaml}
 CONFIG=${CONFIG:-config/settings.toml}
-PRIMS=${PRIMS:-"+/xilinx/cells_map.v +/xilinx/cells_sim.v"}
+PRIMS=${PRIMS:-"+/xilinx/cells_sim.v"}
 
 XILINX_TCL=${XILINX_TCL:-flows/vivado/impl.tcl}
 VIVADO_BIN=${VIVADO_BIN:-"/opt/Xilinx/Vivado/2024.2/bin/vivado"}

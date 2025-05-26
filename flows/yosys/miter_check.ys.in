@@ -1,23 +1,22 @@
-read_verilog __RTL__
+read_verilog -DGLBL __RTL__
 rename __TOP__ netlist
 
-read_verilog __PNR__
+read_verilog -DGLBL __PNR__
 rename __TOP__ impl
 
 read_verilog __PRIMS__
 
-proc; memory; opt
-
 miter -equiv -make_assert netlist impl eq_top
-show      -format dot -prefix __OUT__/miter_raw
 
-hierarchy -top eq_top; proc; flatten;
-opt_clean; proc; memory; opt
+hierarchy -top eq_top; flatten;
+proc;
 
 show      -format dot -prefix __OUT__/miter_flat
 
 write_json -noscopeinfo -selected __OUT__/eq_top.json
 write_verilog -noattr __OUT__/eq_top.v
-sat -dump_vcd __OUT__/counter_example.vcd -verify-no-timeout -timeout 1 -prove-asserts -tempinduct eq_top
+
 dffunmap
+
+sat -dump_vcd __OUT__/counter_example.vcd -verify-no-timeout -timeout 1 -prove-asserts -tempinduct eq_top
 write_smt2 __OUT__/eq_top.smt2
