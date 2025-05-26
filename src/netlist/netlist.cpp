@@ -167,7 +167,7 @@ void Netlist::buffer_unconnected_outputs() {
 
     for (Net* net_ptr : logic_nets_without_sinks)
         add_buffer(
-            net_ptr, lib.get_random_buffer(net_ptr->net_type, NetType::LOGIC)
+            net_ptr, lib.get_random_buffer(net_ptr->net_type, NetType::EXT_OUT)
         );
 }
 
