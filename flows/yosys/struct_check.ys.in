@@ -1,19 +1,18 @@
 read_verilog -lib __PRIMS__
 
-read_verilog  __RTL__
+read_verilog -DGLBL __RTL__
 rename __TOP__ gold
 show -format dot -prefix __OUT__/synth
 
-read_verilog  __PNR__
+read_verilog -DGLBL __PNR__
 rename __TOP__ gate
 show -format dot -prefix __OUT__/impl
 
-equiv_make gold gate equiv_top
+equiv_make gold gate equiv_top;
 
-opt; opt_clean
+proc;
 
-show -format dot -prefix __OUT__/struct
-write_verilog -noattr   __OUT__/equiv_top.v
+show -format dot -prefix __OUT__/struct_equiv
 
 equiv_struct             equiv_top
 equiv_status   -assert   equiv_top
