@@ -9,8 +9,6 @@ cd "$PROJECT_ROOT"
 workers=${FUZNET_WORKERS:-1}
 echo "[POOL] launching $workers workers…"
 
-POOL_PIDS=()
-
 trap 'echo "[POOL] Terminating workers..."; kill -- -$$' EXIT
 
 for i in $(seq $workers); do
