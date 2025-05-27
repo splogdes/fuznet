@@ -114,6 +114,9 @@ tmpl() {
     echo "$dst"
 }
 
+miter_status="unknown"
+verilator_status="unknown"
+
 # ───────────────────────────────────────────────────────────────────────────
 
 mkdir -p "$OUTDIR" 
@@ -130,7 +133,7 @@ blue "│ RTL  : $RTL_NET"
 blue "│ PNR  : $PNR_NET"
 blue "│ PRIMS: $PRIMS"
 blue "│ SEED : $SEED_HEX"
-blue "└──────────────────────────────────────────────────────"
+blue "└─────────────────────────────────────────────────────"
 
 # ── build & run fuznet ────────────────────────────────────────────
 "$FUZNET_BIN"  -l "$LIBRARY_CP"             \
@@ -186,32 +189,53 @@ yosys -q -l "$MITER_LOG" -s "$TMP_YS" >/dev/null 2>&1 || MITER_RET=$?
 MITER_TOKEN=$(grep -oE 'SUCCESS!|FAIL!|TIMEOUT!' "$MITER_LOG" || echo "UNKNOWN")
 
 case "$MITER_TOKEN:$MITER_RET" in
-    "SUCCESS!:0") green "miter check passed"; result_category="miter_pass"; exit 0 ;;
-    "TIMEOUT!:0") yellow "miter check timed out" ;;
-    "FAIL!:1")    log_failed_seed "miter check failed"; result_category="miter_fail"; red "miter check failed (ret=$MITER_RET token=$MITER_TOKEN), check $MITER_LOG"; exit 0 ;;
-    *)            result_category="miter_unknown"; die "miter unknown state (ret=$MITER_RET token=$MITER_TOKEN)" ;;
+    "SUCCESS!:0") green  "miter check passed"     ; miter_status="pass"    ;;
+    "TIMEOUT!:0") yellow "miter check timed out"  ; miter_status="timeout" ;;
+    "FAIL!:1")    red    "miter check failed"     ; miter_status="fail"    ;;
+    *)            result_category="miter_unknown" ; die "miter unknown state (ret=$MITER_RET token=$MITER_TOKEN)" ;;
 esac
+
+if [[ $miter_status == "pass" ]]; then
+    result_category="miter_pass"
+    exit 0
+fi
 
 # ── Verilator simulation ─────────────────────────────────────────
 blue "Verilator simulation"
 
 export SEED=$SEED_HEX OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
-./scripts/gen_tb.py || { result_category="tb_gen_fail"; die "tb_gen.py failed"; }
-
-verilator -cc --exe --build -O2     \
-          -Mdir $OUTDIR/build       \
-          "$OUTDIR/eq_top.v"        \
-          "$OUTDIR/eq_top_tb.cpp"   \
-          > "$LOG_DIR/verilator.log" 2>&1 || { result_category="verilator_fail"; die "Verilator failed"; }
-
-if ! $OUTDIR/build/Veq_top > /dev/null 2>&1; then
-    log_failed_seed "Verilator simulation failed"
-    result_category="verilator_fail"
-    red "Verilator simulation failed, check $LOG_DIR/verilator.log"
-    exit 0
+if ./scripts/gen_tb.py; then
+    verilator -cc --exe --build -O2     \
+            -Mdir $OUTDIR/build       \
+            "$OUTDIR/eq_top.v"        \
+            "$OUTDIR/eq_top_tb.cpp"   \
+            > "$LOG_DIR/verilator.log" 2>&1 || verilator_status="build_failed"
+else
+    red "Failed to generate Verilator testbench"
+    verilator_status="build_failed"
 fi
 
-green "Verilator simulation passed"
+if [[ $verilator_status != "build_failed" ]]; then
+    if $OUTDIR/build/Veq_top  >> "$LOG_DIR/verilator.log" 2>&1; then
+        green  "Verilator simulation passed"
+        verilator_status="pass"
+    else
+        red "Verilator simulation failed"
+        verilator_status="fail"
+    fi
+fi
+
+result_category=$(printf "verilator_%s_miter_%s" "$verilator_status" "$miter_status")
+
+case "$verilator_status:$miter_status" in
+    "pass:timeout")         yellow "Verilator simulation passed, but miter timed out" ;;
+    "pass:fail")            red "Verilator simulation passed, but miter failed"         ; log_failed_seed "Verilator simulation passed, but miter failed"       ;;
+    "build_failed:fail")    red "Verilator build failed, miter failed"                  ; log_failed_seed "Verilator build failed, miter failed"                ;;
+    "build_failed:timeout") red "Verilator build failed, miter timed out"               ; log_failed_seed "Verilator build failed, but miter timed out"         ;;
+    "fail:timeout")         red "Verilator simulation failed, miter timed out"          ; log_failed_seed "Verilator simulation failed, but miter timed out"    ;;
+    "fail:fail")            red "Verilator simulation failed, miter failed"             ; log_failed_seed "Verilator simulation failed, and miter failed"       ;;
+    *)                      die "Verilator unknown state (status=$verilator_status miter_status=$miter_status)" ;;
+esac
 
 if [[ $USE_SMTBMC -eq 0 ]]; then
     result_category="verilator_pass"
