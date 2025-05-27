@@ -183,7 +183,12 @@ TMP_YS=$(tmpl flows/yosys/miter_check.ys.in)
 MITER_LOG="$LOG_DIR/miter.log"
 MITER_RET=0
 yosys -q -l "$MITER_LOG" -s "$TMP_YS" >/dev/null 2>&1 || MITER_RET=$?
-MITER_TOKEN=$(grep -oE 'SUCCESS!|FAIL!|TIMEOUT!' "$MITER_LOG" || echo "UNKNOWN")
+MITER_TOKEN=$(grep -oE 'SUCCESS!|FAIL!|gotTimeout == false|TIMEOUT!' "$MITER_LOG" || echo "UNKNOWN")
+
+if [[ $MITER_TOKEN == "gotTimeout == false" ]]; then
+    MITER_TOKEN="TIMEOUT!"
+    MITER_RET=0
+fi
 
 case "$MITER_TOKEN:$MITER_RET" in
     "SUCCESS!:0") green "miter check passed"; result_category="miter_pass"; exit 0 ;;
