@@ -238,7 +238,6 @@ case "$verilator_status:$miter_status" in
 esac
 
 if [[ $USE_SMTBMC -eq 0 ]]; then
-    result_category="verilator_pass"
     exit 0
 fi
 
