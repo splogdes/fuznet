@@ -6,12 +6,10 @@ rename __TOP__ impl
 
 read_verilog __PRIMS__
 
-flatten; proc;
-
 miter -equiv -make_assert netlist impl eq_top
 
-hierarchy -top eq_top;
-flatten; proc;
+hierarchy -top eq_top; flatten;
+proc;
 
 show      -format dot -prefix __OUT__/miter_flat
 
