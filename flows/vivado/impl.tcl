@@ -15,8 +15,14 @@ write_verilog  -force -mode funcsim $synth_file
 
 # Now you can do P&R
 opt_design
+power_opt_design
+
 place_design
+phys_opt_design
+power_opt_design
+
 route_design
+phys_opt_design
 
 # Export outputs
 write_verilog -force -mode funcsim $impl_file
