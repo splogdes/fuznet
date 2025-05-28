@@ -25,7 +25,7 @@ for i in $(seq $workers); do
                 echo "[W$padded_id] fuzzer.sh failed, retrying in $current_sleep seconds…"
                 sleep $current_sleep
                 current_sleep=$((current_sleep * 2))
-            else
+            elif [ $current_sleep -gt 1 ]; then
                 echo "[W$padded_id] fuzzer.sh completed successfully, resetting sleep time."
                 current_sleep=1
             fi
