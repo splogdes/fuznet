@@ -1,20 +1,16 @@
-read_verilog -DGLBL __RTL__
-rename __TOP__ netlist
-
-read_verilog -DGLBL __PNR__
-rename __TOP__ impl
-
 read_verilog __PRIMS__
 
-miter -equiv -make_assert netlist impl eq_top
+read_verilog -DGLBL  __OUT__/__SYNTH__.v
+rename __SYNTH__ synth
 
-hierarchy -top eq_top; flatten;
-proc;
+read_verilog -DGLBL __OUT__/__IMPL__.v
+rename __IMPL__ impl
 
-show      -format dot -prefix __OUT__/miter_flat
+miter -equiv -make_assert synth impl eq_top
 
-write_json -noscopeinfo -selected __OUT__/eq_top.json
-write_verilog -noattr __OUT__/eq_top.v
+hierarchy -top eq_top;
+
+proc; flatten;
 
 dffunmap
 

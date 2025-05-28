@@ -7,271 +7,269 @@
 
 set -euo pipefail
 
-# ────────────────  USER-TUNABLE KNOBS (override via env) ──────────────────
+# ─────────────────────── USER-TUNABLE KNOBS (override via env) ──────────────
 TOP=${TOP:-top}
 
 WORKER_ID=${WORKER_ID:-0}
 
 SEED=${SEED:-$(od -An -N4 -tu4 < /dev/urandom)}
-DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
+EPOCH_START=$(date +%s)
+DATE_TIME=$(date -d "@$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUTDIR=${OUTDIR:-"tmp-$DATE-$SEED_HEX-w$WORKER_ID"}
-LOG_DIR="$OUTDIR/logs"
+OUT_DIR=${OUT_DIR:-"tmp-${DATE_TIME}-${SEED_HEX}-w${WORKER_ID}"}
+LOG_DIR="$OUT_DIR/logs"
 
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
 
-LIBRARY=${LIBRARY:-hardware/cells/xilinx.yaml}
-CONFIG=${CONFIG:-config/settings.toml}
-PRIMS=${PRIMS:-"+/xilinx/cells_sim.v"}
+CELL_LIBRARY=${CELL_LIBRARY:-hardware/xilinx/cells.yaml}
+SETTINGS_TOML=${SETTINGS_TOML:-config/settings.toml}
+PRIMITIVES_V=${PRIMITIVES_V:-hardware/xilinx/cell_sim.v}
 
-XILINX_TCL=${XILINX_TCL:-flows/vivado/impl.tcl}
-VIVADO_BIN=${VIVADO_BIN:-"/opt/Xilinx/Vivado/2024.2/bin/vivado"}
+VIVADO_TCL=${VIVADO_TCL:-flows/vivado/impl.tcl}
+VIVADO_BIN=${VIVADO_BIN:-/opt/Xilinx/Vivado/2024.2/bin/vivado}
 
-FUZNET_BIN=${FUZNET_BIN:-"fuznet"}
+FUZNET_BIN=${FUZNET_BIN:-fuznet}
 
-RTL_NET=${RTL_NET:-"$OUTDIR/post_synth.v"}
-PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
-FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
+SYNTH_TOP=${SYNTH_TOP:-synth}   # RTL (golden) hierarchy root
+NETLIST_TOP=${NETLIST_TOP:-impl} # PnR (gate-level) hierarchy root
+
+FUZZED_NETLIST_V="$OUT_DIR/fuzzed_netlist.v"
+
+PORT_SPEC_JSON=${PORT_SPEC_JSON:-port_spec.json}
 
 USE_SMTBMC=${USE_SMTBMC:-0}
 # ───────────────────────────────────────────────────────────────────────────
 
+# ───────────────────────────── helpers ─────────────────────────────────────
+info()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
+warn()  { printf "\033[0;33m[WARN] \033[0m%s\n"  "$*"; }
+pass()  { printf "\033[0;32m[PASS] \033[0m%s\n"  "$*"; }
+fail()  { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 
-# ──────────────── Cleanup on exit ──────────────────────────────────────────
-
-START_TIME=$(date +%s)
-result_category=""
-
-log_stats_on_exit() {
-    local end_time=$(date +%s)
-    local runtime=$(( end_time - START_TIME ))
-    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-
-    local fuznet_stats="${FUZZ_NET%.v}_stats.json"
-
-    mkdir -p "$PERMANENT_LOGS"
-    local results_csv="$PERMANENT_LOGS/results.csv"
-    
-    if [ ! -f $results_csv ]; then
-        echo "timestamp,worker,seed,category,runtime,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules" \
-             > "$PERMANENT_LOGS/results.csv"
-    fi
-
-    local input_nets="N/A" output_nets="N/A" total_nets="N/A"
-    local comb_modules="N/A" seq_modules="N/A" total_modules="N/A"
-    
-    if [ -f "$fuznet_stats" ]; then
-        input_nets=$(   jq -r '.netlist_stats.input_nets'      "$fuznet_stats" )
-        output_nets=$(  jq -r '.netlist_stats.output_nets'     "$fuznet_stats" )
-        total_nets=$(   jq -r '.netlist_stats.total_nets'      "$fuznet_stats" )
-        comb_modules=$( jq -r '.netlist_stats.comb_modules'    "$fuznet_stats" )
-        seq_modules=$(  jq -r '.netlist_stats.seq_modules'     "$fuznet_stats" )
-        total_modules=$(jq -r '.netlist_stats.total_modules'   "$fuznet_stats" )
-    fi
-        
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
-        "$timestamp" "$WORKER_ID" "$SEED_HEX" "${result_category:-unknown}" "$runtime" \
-        "$input_nets" "$output_nets" "$total_nets" \
-        "$comb_modules" "$seq_modules" "$total_modules" \
-        >> "$results_csv"
-
-    rm -rf $OUTDIR
+abort() {
+    fail "$*"
+    capture_failed_seed "$*"
+    exit 1
 }
 
-trap 'log_stats_on_exit' EXIT SIGINT SIGTERM 
-
-# ────────────────  helpers  ────────────────────────────────────────────────
-blue()  { printf "\033[0;34m[INFO] \033[0m%s\n"  "$*"; }
-yellow(){ printf "\033[0;33m[WARN] \033[0m%s\n"  "$*"; }
-green() { printf "\033[0;32m[PASS] \033[0m%s\n"  "$*"; }
-red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
-
-log_failed_seed() {
-    local save_dir="$PERMANENT_LOGS/$DATE-$SEED_HEX-w$WORKER_ID"
+capture_failed_seed() {
+    local save_dir="$PERMANENT_LOGS/${DATE_TIME}-${SEED_HEX}-w${WORKER_ID}"
     mkdir -p "$save_dir"
-    cp -r "$OUTDIR"/* "$save_dir/" || true
-    printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE" "$SEED_HEX" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
-    red "Seed $SEED_HEX captured - detailed logs in $PERMANENT_LOGS"
+    cp -r "$OUT_DIR"/* "$save_dir/" 2>/dev/null || true
+    printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE_TIME" "$SEED_HEX" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
+    fail "Seed $SEED_HEX captured - detailed logs in $PERMANENT_LOGS"
+    echo "Seed $SEED_HEX failed"
 }
 
-die() { red "$*"; log_failed_seed "$*" ; exit 1; }
-
-trap 'red "Failure in command: $BASH_COMMAND"; log_failed_seed "Failure in command: $BASH_COMMAND"; \
-      result_category="${result_category:-error}"; exit 1' ERR
-
-tmpl() {
+# Create a temporary yosys script from a template, substituting knobs
+#   $1 – template path (*.in)
+mk_template() {
     local src="$1"
-    local dst
-    dst="$OUTDIR/$(basename "$src" .in)"
-    sed -e "s|__RTL__|$RTL_NET|g"  \
-        -e "s|__PNR__|$PNR_NET|g"  \
-        -e "s|__TOP__|$TOP|g"      \
-        -e "s|__PRIMS__|$PRIMS|g"  \
-        -e "s|__OUT__|$OUTDIR|g"   \
+    local dst="$OUT_DIR/$(basename "$src" .in)"
+    sed -e "s|__SYNTH__|$SYNTH_TOP|g"   \
+        -e "s|__IMPL__|$NETLIST_TOP|g" \
+        -e "s|__TOP__|$TOP|g"          \
+        -e "s|__PRIMS__|$PRIMITIVES_V|g" \
+        -e "s|__OUT__|$OUT_DIR|g"      \
+        -e "s|__JSON__|$PORT_SPEC_JSON|g" \
         "$src" > "$dst"
     echo "$dst"
 }
 
-miter_status="unknown"
-verilator_status="unknown"
+# ─────────────────────────── cleanup / stats ───────────────────────────────
+RESULT_CATEGORY=""
 
-# ───────────────────────────────────────────────────────────────────────────
+on_exit() {
+    local end_time=$(date +%s)
+    local runtime=$(( end_time - EPOCH_START ))
+    local human_date=$(date -d "@$EPOCH_START" '+%Y-%m-%d %H:%M:%S')
 
-mkdir -p "$OUTDIR" 
-mkdir -p "$LOG_DIR"
+    local stats_json="${FUZZED_NETLIST_V%.v}_stats.json"
 
-cp "$LIBRARY" "$CONFIG" "$XILINX_TCL" "$OUTDIR/"
+    mkdir -p "$PERMANENT_LOGS"
+    local results_csv="$PERMANENT_LOGS/results.csv"
+    if [[ ! -f $results_csv ]]; then
+        echo "timestamp,worker,seed,category,runtime,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules" \
+             > "$results_csv"
+    fi
 
-LIBRARY_CP="$OUTDIR/$(basename "$LIBRARY")"
-CONFIG_CP="$OUTDIR/$(basename "$CONFIG")"
-XILINX_TCL_CP="$OUTDIR/$(basename "$XILINX_TCL")"
+    local in_nets= output_nets= total_nets=
+    local comb_mods= seq_mods= total_mods=
 
-blue "┌───────────────────── run_equiv ─────────────────────"
-blue "│ RTL  : $RTL_NET"
-blue "│ PNR  : $PNR_NET"
-blue "│ PRIMS: $PRIMS"
-blue "│ SEED : $SEED_HEX"
-blue "└─────────────────────────────────────────────────────"
+    if [[ -f $stats_json ]]; then
+        read -r in_nets output_nets total_nets \
+                        comb_mods seq_mods total_mods < <(
+        jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
+            "$stats_json"
+        )
+    else
+        in_nets=NA output_nets=NA total_nets=NA
+        comb_mods=NA seq_mods=NA total_mods=NA
+    fi
 
-# ── build & run fuznet ────────────────────────────────────────────
-"$FUZNET_BIN"  -l "$LIBRARY_CP"             \
-               -c "$CONFIG_CP"              \
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+           "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
+           "$in_nets" "$output_nets" "$total_nets" \
+           "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
+
+    rm -rf "$OUT_DIR"
+}
+trap 'on_exit' EXIT SIGINT SIGTERM
+
+# Exit if any command in a pipeline fails & record the failing command
+trap 'fail "Failure in command: $BASH_COMMAND"; capture_failed_seed "Failure in command: $BASH_COMMAND"; RESULT_CATEGORY="${RESULT_CATEGORY:-error}"; exit 1' ERR
+
+# ────────────────────────────── bootstrap ──────────────────────────────────
+mkdir -p "$OUT_DIR" "$LOG_DIR"
+
+cp "$CELL_LIBRARY" "$SETTINGS_TOML" "$VIVADO_TCL" "$OUT_DIR/"
+
+CELL_LIBRARY_CP="$OUT_DIR/$(basename "$CELL_LIBRARY")"
+SETTINGS_TOML_CP="$OUT_DIR/$(basename "$SETTINGS_TOML")"
+VIVADO_TCL_CP="$OUT_DIR/$(basename "$VIVADO_TCL")"
+
+info "┌────────────────────── run_equiv ──────────────────────"
+info "│ OUT_DIR : $OUT_DIR"
+info "│ WORKER  : $WORKER_ID"
+info "│ PRIMS   : $PRIMITIVES_V"
+info "│ SEED    : $SEED_HEX"
+info "└────────────────────────────────────────────────────────"
+
+# ─────────── 1. Fuzz netlist generation ───────────────────────────────────
+"$FUZNET_BIN"  -l "$CELL_LIBRARY_CP"        \
+               -c "$SETTINGS_TOML_CP"       \
                -s "$SEED"                   \
                -v                           \
                -j                           \
-               -o "${FUZZ_NET%.v}"          \
-               >"$LOG_DIR/fuznet.log" 2>&1  \
-               || { result_category="fuznet_fail"; die "fuznet failed"; }
-blue "fuznet finished"
+               -o "${FUZZED_NETLIST_V%.v}"  \
+               >"$LOG_DIR/fuznet.log" 2>&1  || { RESULT_CATEGORY="fuznet_fail"; abort "fuznet failed"; }
+info "fuznet finished"
 
-# ── Vivado PnR ────────────────────────────────────────────────────
-blue "Running Vivado PnR"
+# ─────────── 2. Vivado implementation ─────────────────────────────────────
+info "Running Vivado PnR"
 VIVADO_RET=0
-"$VIVADO_BIN"  -mode batch                                       \
-               -log "$LOG_DIR/vivado.log"                        \
-               -journal "$LOG_DIR/vivado.jou"                    \
-               -source "$XILINX_TCL_CP"                          \
-               -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
-               > /dev/null 2>&1 || VIVADO_RET=$?
+"$VIVADO_BIN" -mode batch                    \
+              -log "$LOG_DIR/vivado.log"     \
+              -journal "$LOG_DIR/vivado.jou" \
+              -source "$VIVADO_TCL_CP"       \
+              -tclargs "$OUT_DIR" "$SYNTH_TOP" "$NETLIST_TOP" "$TOP" "$FUZZED_NETLIST_V" \
+              >/dev/null 2>&1 || VIVADO_RET=$?
 
-if [[ $VIVADO_RET -gt 128 ]]; then
-    result_category="vivado_crash"
-    log_failed_seed "Vivado crashed with signal (ret=$VIVADO_RET)"
-    red "Vivado Crashed (ret=$VIVADO_RET)"
+if (( VIVADO_RET > 128 )); then
+    RESULT_CATEGORY="vivado_crash"
+    capture_failed_seed "Vivado crashed (ret=${VIVADO_RET})"
+    fail "Vivado crashed"
     exit 0
-elif [[ $VIVADO_RET -gt 0 ]]; then
-    result_category="vivado_fail"
-    die "Vivado failed (ret=$VIVADO_RET)"
+elif (( VIVADO_RET > 0 )); then
+    RESULT_CATEGORY="vivado_fail"
+    abort "Vivado failed (ret=${VIVADO_RET})"
 fi
+rm -f clockInfo.txt || true
+info "Vivado PnR finished"
 
-rm clockInfo.txt > /dev/null 2>&1 || true
-blue "Vivado PnR finished"
-
-# ── Structural equivalence ───────────────────────────────────────
-blue "Structural equivalence check"
-TMP_YS=$(tmpl flows/yosys/struct_check.ys.in)
+# ─────────── 3. Structural equivalence (yosys) ────────────────────────────
+info "Structural equivalence check"
+TMP_YS=$(mk_template flows/yosys/struct_check.ys.in)
 if yosys -q -l "$LOG_DIR/struct.log" -s "$TMP_YS" >/dev/null 2>&1; then
-    green "structural equivalence OK"
-    result_category="structural_pass"
+    pass "structural equivalence OK"
+    RESULT_CATEGORY="structural_pass"
     exit 0
 else
-    yellow "structural check failed → proceeding to miter/BMC"
+    warn "structural check failed → falling back to functional checks"
 fi
 
-# ── Miter equivalence ────────────────────────────────────────────
-blue "Miter equivalence check"
-TMP_YS=$(tmpl flows/yosys/miter_check.ys.in)
+# ─────────── 4. Functional miter equivalence (yosys-sat) ──────────────────
+info "Miter equivalence check"
+TMP_YS=$(mk_template flows/yosys/miter_check.ys.in)
 MITER_LOG="$LOG_DIR/miter.log"
 MITER_RET=0
 yosys -q -l "$MITER_LOG" -s "$TMP_YS" >/dev/null 2>&1 || MITER_RET=$?
 MITER_TOKEN=$(grep -oE 'SUCCESS!|FAIL!|TIMEOUT!' "$MITER_LOG" || echo "UNKNOWN")
 
 case "$MITER_TOKEN:$MITER_RET" in
-    "SUCCESS!:0") green  "miter check passed"     ; miter_status="pass"    ;;
-    "TIMEOUT!:0") yellow "miter check timed out"  ; miter_status="timeout" ;;
-    "FAIL!:1")    red    "miter check failed"     ; miter_status="fail"    ;;
-    *)            result_category="miter_unknown" ; die "miter unknown state (ret=$MITER_RET token=$MITER_TOKEN)" ;;
+    "SUCCESS!:0") pass  "miter check passed"      ; MITER_STATUS="pass"    ;;
+    "TIMEOUT!:0") warn  "miter check timed out"   ; MITER_STATUS="timeout" ;;
+    "FAIL!:1")    fail  "miter check failed"      ; MITER_STATUS="fail"    ;;
+    *)            RESULT_CATEGORY="miter_unknown" ; abort "miter unknown state (ret=$MITER_RET token=$MITER_TOKEN)" ;;
 esac
 
-if [[ $miter_status == "pass" ]]; then
-    result_category="miter_pass"
+if [[ $MITER_STATUS == "pass" ]]; then
+    RESULT_CATEGORY="miter_pass"
     exit 0
 fi
 
-# ── Verilator simulation ─────────────────────────────────────────
-blue "Verilator simulation"
-
-export SEED=$SEED_HEX OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
-if ./scripts/gen_tb.py; then
-    verilator -cc --exe --build -O2     \
-            -Mdir $OUTDIR/build       \
-            "$OUTDIR/eq_top.v"        \
-            "$OUTDIR/eq_top_tb.cpp"   \
-            > "$LOG_DIR/verilator.log" 2>&1 || verilator_status="build_failed"
+# ─────────── 5. Verilator simulation fallback ─────────────────────────────
+info "Verilator simulation"
+VERILATOR_STATUS="unknown"
+if ./scripts/gen_miter.py          \
+        --outdir "$OUT_DIR"        \
+        --seed "$SEED_HEX"         \
+        --json "$PORT_SPEC_JSON"   \
+        --gold-top "$SYNTH_TOP"    \
+        --gate-top "$NETLIST_TOP"  \
+        --tb "eq_top_tb.cpp"       \
+        --no-vcd                   \
+        --cycles 1000000
+then
+    verilator -cc --exe --build              \
+              -DGLBL -Wno-fatal -I"$OUT_DIR" \
+              --trace-underscore             \
+              -Mdir "$OUT_DIR/build"         \
+              "$OUT_DIR/eq_top.v"            \
+              "$PRIMITIVES_V"                \
+              "$OUT_DIR/eq_top_tb.cpp"       \
+              > "$LOG_DIR/verilator.log" 2>&1 || VERILATOR_STATUS="build_failed"
 else
-    red "Failed to generate Verilator testbench"
-    verilator_status="build_failed"
+    fail "Failed to generate Verilator testbench"
 fi
 
-if [[ $verilator_status != "build_failed" ]]; then
-    if $OUTDIR/build/Veq_top  >> "$LOG_DIR/verilator.log" 2>&1; then
-        green  "Verilator simulation passed"
-        verilator_status="pass"
+if [[ $VERILATOR_STATUS != "build_failed" ]]; then
+    if "$OUT_DIR/build/Veq_top" >> "$LOG_DIR/verilator.log" 2>&1; then
+        pass  "Verilator simulation passed"
+        VERILATOR_STATUS="pass"
     else
-        red "Verilator simulation failed"
-        verilator_status="fail"
+        fail "Verilator simulation failed"
+        VERILATOR_STATUS="fail"
     fi
 fi
 
-result_category=$(printf "verilator_%s_miter_%s" "$verilator_status" "$miter_status")
+RESULT_CATEGORY="verilator_${VERILATOR_STATUS}_miter_${MITER_STATUS}"
 
-case "$verilator_status:$miter_status" in
-    "pass:timeout")         yellow "Verilator simulation passed, but miter timed out" ;;
-    "pass:fail")            red "Verilator simulation passed, but miter failed"         ; log_failed_seed "Verilator simulation passed, but miter failed"       ;;
-    "build_failed:fail")    red "Verilator build failed, miter failed"                  ; log_failed_seed "Verilator build failed, miter failed"                ;;
-    "build_failed:timeout") red "Verilator build failed, miter timed out"               ; log_failed_seed "Verilator build failed, but miter timed out"         ;;
-    "fail:timeout")         red "Verilator simulation failed, miter timed out"          ; log_failed_seed "Verilator simulation failed, but miter timed out"    ;;
-    "fail:fail")            red "Verilator simulation failed, miter failed"             ; log_failed_seed "Verilator simulation failed, and miter failed"       ;;
-    *)                      die "Verilator unknown state (status=$verilator_status miter_status=$miter_status)" ;;
+case "${VERILATOR_STATUS}:${MITER_STATUS}" in
+    "pass:timeout")         warn  "Verilator passed, but miter timed out"   ;;
+    "pass:fail")            fail  "Verilator passed, but miter failed"      ; capture_failed_seed "Verilator passed, but miter failed"      ;;
+    "build_failed:fail")    fail  "Verilator build failed, miter failed"    ; capture_failed_seed "Verilator build failed, miter failed"    ;;
+    "build_failed:timeout") fail  "Verilator build failed, miter timed out" ; capture_failed_seed "Verilator build failed, miter timed out" ;;
+    "fail:timeout")         fail  "Verilator failed, miter timed out"       ; capture_failed_seed "Verilator failed, miter timed out"       ;;
+    "fail:fail")            fail  "Verilator failed, miter failed"          ; capture_failed_seed "Verilator failed, miter failed"          ;;
+    *)                      abort "Verilator unknown state (verilator=$VERILATOR_STATUS miter=$MITER_STATUS)" ;;
 esac
 
-if [[ $USE_SMTBMC -eq 0 ]]; then
-    exit 0
+(( USE_SMTBMC == 0 )) && exit 0
+
+# ─────────── 6. Bounded model checking (smtbmc) ───────────────────────────
+info "BMC (Z3, 1000 steps, timeout 60s)"
+BMC_LOG="$LOG_DIR/bmc.log"
+if yosys-smtbmc -s z3 -t 1000 --timeout 60 --dump-vcd "$OUT_DIR/bmc.vcd" "$OUT_DIR/eq_top.smt2" \
+               > "$BMC_LOG" 2>&1; then
+    pass "BMC passed - equivalence proven"
+else
+    case $(grep -oE 'timeout|FAILED' "$BMC_LOG" || echo "UNKNOWN") in
+        "timeout")  warn "BMC timed out" ;;
+        "FAILED")   capture_failed_seed "BMC failed - counterexample found" ; RESULT_CATEGORY="bmc_fail" ; fail "BMC failed - counterexample found" ; exit 0 ;;
+        *)        RESULT_CATEGORY="bmc_unknown" ; abort "BMC unknown outcome" ;;
+    esac
 fi
 
-# ── BMC / induction ──────────────────────────────────────────────
-blue "BMC (Z3, 1000 steps, timeout 300s)"
-BMC_RET=0
-BMC_LOG="$LOG_DIR/bmc.log"
-yosys-smtbmc -s z3 -t 1000                      \
-                   --timeout 60                 \
-                   --dump-vcd "$OUTDIR/bmc.vcd" \
-                   "$OUTDIR/eq_top.smt2"        \
-                   >"$BMC_LOG" 2>&1 || BMC_RET=$?
-BMC_TOKEN=$(grep -oE 'timeout|PASSED|FAILED' "$BMC_LOG" || echo "UNKNOWN")
-
-case "$BMC_TOKEN:$BMC_RET" in
-    "PASSED:0") green "BMC passed - equivalence proven" ;;
-    "timeout:1") yellow "BMC timed out" ;;
-    "FAILED:1") log_failed_seed "BMC failed - counterexample found"; result_category="bmc_fail"; red "BMC failed - counterexample found (ret=$BMC_RET token=$BMC_TOKEN), check $BMC_LOG"; exit 0 ;;
-    *) result_category="bmc_unknown"; die "BMC unknown state (ret=$BMC_RET token=$BMC_TOKEN)" ;;
-esac
-
-# ── 6. Induction proof ──────────────────────────────────────────────────
-blue "Induction (Z3, k<=128, timeout 300s)"
-if yosys-smtbmc -s z3 -i -t 128                 \
-                --timeout 60                    \
-                --dump-vcd "$OUTDIR/induct.vcd" \
-                "$OUTDIR/eq_top.smt2"           \
-                >"$LOG_DIR/induct.log" 2>&1; then
-    green "Induction passed - equivalence proven"
-    result_category="induction_pass"
-    exit 0
+# ─────────── 7. Simple induction proof (k <= 128) ─────────────────────────
+info "Induction (Z3, k<=128, timeout 60s)"
+if yosys-smtbmc -s z3 -i -t 128 --timeout 60 --dump-vcd "$OUT_DIR/induct.vcd" "$OUT_DIR/eq_top.smt2" \
+               > "$LOG_DIR/induct.log" 2>&1; then
+    pass "Induction passed - equivalence proven"
+    RESULT_CATEGORY="induction_pass"
 else
-    yellow "Induction failed - see $LOG_DIR/induct.log"
-    yellow "No equivalence proven, but no counterexample found"
-    result_category="No_equivalence_proven"
-    exit 0
+    warn "Induction failed - see $LOG_DIR/induct.log"
+    RESULT_CATEGORY="no_equivalence_proven"
 fi
