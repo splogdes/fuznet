@@ -32,7 +32,7 @@ EPOCH_START=$(date +%s)
 STAMP=$(date -d @"$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUT_DIR=${OUT_DIR:-"tmp-${STAMP}-${SEED_HEX}-w${WORKER_ID}"}
+OUT_DIR=${OUT_DIR:-"tmp"}
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
@@ -83,13 +83,13 @@ on_exit() {
 }
 
 capture_failed_seed() {
-    local msg=$1
-    local save="$PERMANENT_LOGS/runs/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
-    mkdir -p "$save"
-    cp -r "$OUT_DIR"/* "$save/" 2>/dev/null || true
-    printf '%-19s | SEED: %-10s | %s\n' "$STAMP" "$SEED_HEX" "$msg" \
-        >> "$PERMANENT_LOGS/failed_seeds.log"
-    echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
+    # local msg=$1
+    # local save="$PERMANENT_LOGS/runs/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
+    # mkdir -p "$save"
+    # cp -r "$OUT_DIR"/* "$save/" 2>/dev/null || true
+    # printf '%-19s | SEED: %-10s | %s\n' "$STAMP" "$SEED_HEX" "$msg" \
+    #     >> "$PERMANENT_LOGS/failed_seeds.log"
+    # echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
 }
 
 trap 'on_exit' EXIT

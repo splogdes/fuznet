@@ -129,6 +129,7 @@ def write_testbench(outdir, tb_name, clk, inputs, outputs, seed, cycles, no_vcd=
 
         tb.write(f"    uint32_t seed = {seed};\n")
         tb.write(f"    uint32_t cycles = {cycles};\n")
+        tb.write("    bool trigger = false;\n\n")
         tb.write("    std::mt19937 rng(seed);\n")
         tb.write("    auto rnd_bit = [&]() { return rng() & 1; };\n\n")
         tb.write("    std::cerr << \"[TB] seed=\" << seed << \" cycles=\" << cycles << std::endl;\n\n")
@@ -145,14 +146,18 @@ def write_testbench(outdir, tb_name, clk, inputs, outputs, seed, cycles, no_vcd=
         tb.write("            std::cerr << \"[TB] Triggered at cycle \" << i << std::endl;\n")
         for out in outputs:
             tb.write(f"            if (!top->{out}) std::cout << \"[TB] Triggered by wire {out} \" << std::endl;\n")
-        if not no_vcd:
-            tb.write("            tfp->close();\n")
-        tb.write("            return 1;\n        }\n    }\n\n")
+        tb.write("            trigger = true;\n")
+        tb.write("        }\n    }\n\n")
         tb.write("    std::cerr << \"[TB] PASS (\" << cycles << \" cycles)\" << std::endl;\n")
         if not no_vcd:
             tb.write("    tfp->close();\n")
-        tb.write("    return 0;\n}\n")
-
+        tb.write("    delete top;\n")
+        if not no_vcd:
+            tb.write("    delete tfp;\n")
+        tb.write("    if (trigger)\n")
+        tb.write("        return 1;\n")
+        tb.write("    return 0;\n")
+        tb.write("}\n")
 def main():
     args = parse_args()
     os.makedirs(args.outdir, exist_ok=True)

@@ -17,14 +17,14 @@ run_verilator() {
             --gold-top "$synth_top"      \
             --gate-top "$impl_top"       \
             --tb "$cpp_tb"               \
-            --no-vcd                     \
-            --cycles 1000000;
+            --cycles 100;
     then
         fail "Failed to generate miter testbench"
         return 2
     fi
 
     if ! verilator -cc --exe --build     \
+            --trace                      \
             -DGLBL -Wno-fatal -I"$out"   \
             --trace-underscore           \
             -Mdir "$out/build"           \
