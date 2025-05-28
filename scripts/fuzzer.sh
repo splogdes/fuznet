@@ -17,23 +17,23 @@ DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUTDIR=${OUTDIR:-"tmp-$DATE-$SEED_HEX-w$WORKER_ID"}
-LOG_DIR="$OUTDIR/logs"
+OUT_DIR=${OUT_DIR:-"tmp-$DATE-$SEED_HEX-w$WORKER_ID"}
+LOG_DIR="$OUT_DIR/logs"
 
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
 
-LIBRARY=${LIBRARY:-hardware/cells/xilinx.yaml}
+LIBRARY=${LIBRARY:-hardware/xilinx/cells.yaml}
 CONFIG=${CONFIG:-config/settings.toml}
-PRIMS=${PRIMS:-"+/xilinx/cells_sim.v"}
+PRIMS=${PRIMS:-hardware/xilinx/cell_sim.v}
 
 XILINX_TCL=${XILINX_TCL:-flows/vivado/impl.tcl}
 VIVADO_BIN=${VIVADO_BIN:-"/opt/Xilinx/Vivado/2024.2/bin/vivado"}
 
 FUZNET_BIN=${FUZNET_BIN:-"fuznet"}
 
-RTL_NET=${RTL_NET:-"$OUTDIR/post_synth.v"}
-PNR_NET=${PNR_NET:-"$OUTDIR/post_impl.v"}
-FUZZ_NET="$OUTDIR/fuzzed_netlist.v"
+RTL_TOP=${RTL_TOP:-"synth"}
+PNR_TOP=${PNR_NET:-"impl"}
+FUZZ_NET="$OUT_DIR/fuzzed_netlist.v"
 
 USE_SMTBMC=${USE_SMTBMC:-0}
 # ───────────────────────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ log_stats_on_exit() {
         "$comb_modules" "$seq_modules" "$total_modules" \
         >> "$results_csv"
 
-    rm -rf $OUTDIR
+    rm -rf $OUT_DIR
 }
 
 trap 'log_stats_on_exit' EXIT SIGINT SIGTERM 
@@ -91,9 +91,10 @@ red()   { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 log_failed_seed() {
     local save_dir="$PERMANENT_LOGS/$DATE-$SEED_HEX-w$WORKER_ID"
     mkdir -p "$save_dir"
-    cp -r "$OUTDIR"/* "$save_dir/" || true
+    cp -r "$OUT_DIR"/* "$save_dir/" || true
     printf "%-20s | SEED: %-10s | MESSAGE: %s\n" "$DATE" "$SEED_HEX" "$*" >> "$PERMANENT_LOGS/failed_seeds.log"
     red "Seed $SEED_HEX captured - detailed logs in $PERMANENT_LOGS"
+    echo "Seed $SEED_HEX failed"
 }
 
 die() { red "$*"; log_failed_seed "$*" ; exit 1; }
@@ -104,33 +105,35 @@ trap 'red "Failure in command: $BASH_COMMAND"; log_failed_seed "Failure in comma
 tmpl() {
     local src="$1"
     local dst
-    dst="$OUTDIR/$(basename "$src" .in)"
-    sed -e "s|__RTL__|$RTL_NET|g"  \
-        -e "s|__PNR__|$PNR_NET|g"  \
+    dst="$OUT_DIR/$(basename "$src" .in)"
+    sed -e "s|__SYNTH__|$RTL_TOP|g"  \
+        -e "s|__IMPL__|$PNR_TOP|g"  \
         -e "s|__TOP__|$TOP|g"      \
         -e "s|__PRIMS__|$PRIMS|g"  \
-        -e "s|__OUT__|$OUTDIR|g"   \
+        -e "s|__OUT__|$OUT_DIR|g"   \
+        -e "s|__JSON__|$json_file|g" \
         "$src" > "$dst"
     echo "$dst"
 }
 
+json_file="port_spec.json"
 miter_status="unknown"
 verilator_status="unknown"
 
 # ───────────────────────────────────────────────────────────────────────────
 
-mkdir -p "$OUTDIR" 
+mkdir -p "$OUT_DIR" 
 mkdir -p "$LOG_DIR"
 
-cp "$LIBRARY" "$CONFIG" "$XILINX_TCL" "$OUTDIR/"
+cp "$LIBRARY" "$CONFIG" "$XILINX_TCL" "$OUT_DIR/"
 
-LIBRARY_CP="$OUTDIR/$(basename "$LIBRARY")"
-CONFIG_CP="$OUTDIR/$(basename "$CONFIG")"
-XILINX_TCL_CP="$OUTDIR/$(basename "$XILINX_TCL")"
+LIBRARY_CP="$OUT_DIR/$(basename "$LIBRARY")"
+CONFIG_CP="$OUT_DIR/$(basename "$CONFIG")"
+XILINX_TCL_CP="$OUT_DIR/$(basename "$XILINX_TCL")"
 
 blue "┌───────────────────── run_equiv ─────────────────────"
-blue "│ RTL  : $RTL_NET"
-blue "│ PNR  : $PNR_NET"
+blue "│ OUT_DIR: $OUT_DIR"
+blue "│ WORKER: $WORKER_ID"
 blue "│ PRIMS: $PRIMS"
 blue "│ SEED : $SEED_HEX"
 blue "└─────────────────────────────────────────────────────"
@@ -149,11 +152,11 @@ blue "fuznet finished"
 # ── Vivado PnR ────────────────────────────────────────────────────
 blue "Running Vivado PnR"
 VIVADO_RET=0
-"$VIVADO_BIN"  -mode batch                                       \
-               -log "$LOG_DIR/vivado.log"                        \
-               -journal "$LOG_DIR/vivado.jou"                    \
-               -source "$XILINX_TCL_CP"                          \
-               -tclargs "$RTL_NET" "$PNR_NET" "$TOP" "$FUZZ_NET" \
+"$VIVADO_BIN"  -mode batch                                                  \
+               -log "$LOG_DIR/vivado.log"                                   \
+               -journal "$LOG_DIR/vivado.jou"                               \
+               -source "$XILINX_TCL_CP"                                     \
+               -tclargs "$OUT_DIR" "$RTL_TOP" "$PNR_TOP" "$TOP" "$FUZZ_NET" \
                > /dev/null 2>&1 || VIVADO_RET=$?
 
 if [[ $VIVADO_RET -gt 128 ]]; then
@@ -203,20 +206,31 @@ fi
 # ── Verilator simulation ─────────────────────────────────────────
 blue "Verilator simulation"
 
-export SEED=$SEED_HEX OUTDIR=$(realpath "$OUTDIR") CYCLES=${CYCLES:-1000000}
-if ./scripts/gen_tb.py; then
-    verilator -cc --exe --build -O2     \
-            -Mdir $OUTDIR/build       \
-            "$OUTDIR/eq_top.v"        \
-            "$OUTDIR/eq_top_tb.cpp"   \
-            > "$LOG_DIR/verilator.log" 2>&1 || verilator_status="build_failed"
+if ./scripts/gen_miter.py       \
+        --outdir $OUT_DIR   \
+        --seed $SEED_HEX     \
+        --json $json_file    \
+        --gold-top $RTL_TOP  \
+        --gate-top $PNR_TOP  \
+        --tb "eq_top_tb.cpp" \
+        --no-vcd             \
+        --cycles 1000000
+then
+    verilator -cc --exe --build --trace      \
+              -DGLBL -Wno-fatal -I"$OUT_DIR" \
+              --trace-underscore             \
+              -Mdir $OUT_DIR/build           \
+              "$OUT_DIR/eq_top.v"            \
+              $PRIMS                         \
+              "$OUT_DIR/eq_top_tb.cpp"       \
+              > "$LOG_DIR/verilator.log" 2>&1 || verilator_status="build_failed"
 else
     red "Failed to generate Verilator testbench"
     verilator_status="build_failed"
 fi
 
 if [[ $verilator_status != "build_failed" ]]; then
-    if $OUTDIR/build/Veq_top  >> "$LOG_DIR/verilator.log" 2>&1; then
+    if $OUT_DIR/build/Veq_top  >> "$LOG_DIR/verilator.log" 2>&1; then
         green  "Verilator simulation passed"
         verilator_status="pass"
     else
@@ -245,10 +259,10 @@ fi
 blue "BMC (Z3, 1000 steps, timeout 300s)"
 BMC_RET=0
 BMC_LOG="$LOG_DIR/bmc.log"
-yosys-smtbmc -s z3 -t 1000                      \
-                   --timeout 60                 \
-                   --dump-vcd "$OUTDIR/bmc.vcd" \
-                   "$OUTDIR/eq_top.smt2"        \
+yosys-smtbmc -s z3 -t 1000                       \
+                   --timeout 60                  \
+                   --dump-vcd "$OUT_DIR/bmc.vcd" \
+                   "$OUT_DIR/eq_top.smt2"        \
                    >"$BMC_LOG" 2>&1 || BMC_RET=$?
 BMC_TOKEN=$(grep -oE 'timeout|PASSED|FAILED' "$BMC_LOG" || echo "UNKNOWN")
 
@@ -261,10 +275,10 @@ esac
 
 # ── 6. Induction proof ──────────────────────────────────────────────────
 blue "Induction (Z3, k<=128, timeout 300s)"
-if yosys-smtbmc -s z3 -i -t 128                 \
-                --timeout 60                    \
-                --dump-vcd "$OUTDIR/induct.vcd" \
-                "$OUTDIR/eq_top.smt2"           \
+if yosys-smtbmc -s z3 -i -t 128                  \
+                --timeout 60                     \
+                --dump-vcd "$OUT_DIR/induct.vcd" \
+                "$OUT_DIR/eq_top.smt2"           \
                 >"$LOG_DIR/induct.log" 2>&1; then
     green "Induction passed - equivalence proven"
     result_category="induction_pass"

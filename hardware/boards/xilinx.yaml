@@ -1,6 +1,0 @@
-xc7a35ticsg324-1L:
-  type: fpga
-  family: xc7
-  vendor: xilinx
-  io: 250
-  logic: 33280
