@@ -65,7 +65,7 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
         f.write("    wire equivalent;\n\n")
 
         # Instantiate gate-level
-        f.write(f"    {gate_top} u_gate (\n")
+        f.write(f"    {gate_top} inst_{gate_top} (\n")
         f.write(f"        .clk({clk}),\n")
         for inp in inputs:
             f.write(f"        .{inp}({inp}),\n")
@@ -75,7 +75,7 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
         f.write("    );\n\n")
 
         # Instantiate golden (RTL)
-        f.write(f"    {gold_top} u_gold (\n")
+        f.write(f"    {gold_top} inst_{gold_top} (\n")
         f.write(f"        .clk({clk}),\n")
         for inp in inputs:
             f.write(f"        .{inp}({inp}),\n")
@@ -128,8 +128,12 @@ def write_testbench(outdir, tb_name, clk, inputs, seed, cycles, no_vcd=False):
             tb.write("        tfp->dump(i * 10 + 5);\n")
         tb.write("        if (top->trigger) {\n")
         tb.write("            std::cerr << \"[TB] Triggered at cycle \" << i << std::endl;\n")
+        if not no_vcd:
+            tb.write("            tfp->close();\n")
         tb.write("            return 1;\n        }\n    }\n\n")
         tb.write("    std::cerr << \"[TB] PASS (\" << cycles << \" cycles)\" << std::endl;\n")
+        if not no_vcd:
+            tb.write("    tfp->close();\n")
         tb.write("    return 0;\n}\n")
 
 def main():

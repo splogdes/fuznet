@@ -87,7 +87,7 @@ BUFG:
 #     CE: { dir: input }
 #   resource: { lc: 1 }
 
-INV :
+INV:
   weight: 1
   ports:
     I: { dir: input }
