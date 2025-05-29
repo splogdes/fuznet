@@ -1,0 +1,353 @@
+{
+  "creator": "Yosys 0.51 (git sha1 c4b5190229616f7ebf8197f43990b4429de3e420, g++ 14.2.1 -fPIC -O3)",
+  "modules": {
+    "gold": {
+      "attributes": {
+        "DesignAttr:ENABLE_AIE_NETLIST_VIEW": "00000000000000000000000000000001",
+        "DesignAttr:ENABLE_NOC_NETLIST_VIEW": "00000000000000000000000000000001",
+        "NotValidForBitStream": "00000000000000000000000000000001",
+        "cells_not_processed": "00000000000000000000000000000001",
+        "src": "bug_dir/synth.v:18.1-96.10"
+      },
+      "ports": {
+        "clk": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "_01_": {
+          "direction": "input",
+          "bits": [ 3 ]
+        },
+        "_02_": {
+          "direction": "input",
+          "bits": [ 4 ]
+        },
+        "_20_": {
+          "direction": "output",
+          "bits": [ 5 ]
+        },
+        "_21_": {
+          "direction": "output",
+          "bits": [ 6 ]
+        },
+        "_22_": {
+          "direction": "output",
+          "bits": [ 7 ]
+        }
+      },
+      "cells": {
+        "_100_": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:48.8-50.18"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 8 ],
+            "O": [ 5 ]
+          }
+        },
+        "_101_": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:51.8-53.18"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 9 ],
+            "O": [ 6 ]
+          }
+        },
+        "_102_": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:54.8-56.18"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 10 ],
+            "O": [ 7 ]
+          }
+        },
+        "_103_": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "11"
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:59.5-61.18"
+          },
+          "port_directions": {
+            "I0": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I0": [ 11 ],
+            "O": [ 12 ]
+          }
+        },
+        "_143_": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:64.5-66.18"
+          },
+          "port_directions": {
+            "I0": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I0": [ 12 ],
+            "O": [ 13 ]
+          }
+        },
+        "_31513453_": {
+          "hide_name": 0,
+          "type": "CFGLUT5",
+          "parameters": {
+            "INIT": "11110100001101111100100110011000",
+            "IS_CLK_INVERTED": "1"
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:70.5-81.19"
+          },
+          "port_directions": {
+            "CDI": "input",
+            "CDO": "output",
+            "CE": "input",
+            "CLK": "input",
+            "I0": "input",
+            "I1": "input",
+            "I2": "input",
+            "I3": "input",
+            "I4": "input",
+            "O5": "output",
+            "O6": "output"
+          },
+          "connections": {
+            "CDI": [ 14 ],
+            "CDO": [ 8 ],
+            "CE": [ "1" ],
+            "CLK": [ 15 ],
+            "I0": [ 12 ],
+            "I1": [ 13 ],
+            "I2": [ "0" ],
+            "I3": [ "0" ],
+            "I4": [ "0" ],
+            "O5": [ 9 ],
+            "O6": [ 10 ]
+          }
+        },
+        "_38_": {
+          "hide_name": 0,
+          "type": "BUFG",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:82.8-84.18"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 16 ],
+            "O": [ 15 ]
+          }
+        },
+        "_63_": {
+          "hide_name": 0,
+          "type": "IBUF",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:85.8-87.18"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 3 ],
+            "O": [ 11 ]
+          }
+        },
+        "_66_": {
+          "hide_name": 0,
+          "type": "IBUF",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:88.8-90.18"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 4 ],
+            "O": [ 14 ]
+          }
+        },
+        "clk_IBUF_inst": {
+          "hide_name": 0,
+          "type": "IBUF",
+          "parameters": {
+          },
+          "attributes": {
+            "OPT_INSERTED": "00000000000000000000000000000001",
+            "OPT_MODIFIED": "MLO",
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "bug_dir/synth.v:93.8-95.22"
+          },
+          "port_directions": {
+            "I": "input",
+            "O": "output"
+          },
+          "connections": {
+            "I": [ 2 ],
+            "O": [ 16 ]
+          }
+        }
+      },
+      "netnames": {
+        "_01_": {
+          "hide_name": 0,
+          "bits": [ 3 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:26.9-26.13"
+          }
+        },
+        "_02_": {
+          "hide_name": 0,
+          "bits": [ 4 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:27.9-27.13"
+          }
+        },
+        "_03_": {
+          "hide_name": 0,
+          "bits": [ 11 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:34.8-34.12"
+          }
+        },
+        "_04_": {
+          "hide_name": 0,
+          "bits": [ 12 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:35.8-35.12"
+          }
+        },
+        "_05_": {
+          "hide_name": 0,
+          "bits": [ 13 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:36.8-36.12"
+          }
+        },
+        "_06_": {
+          "hide_name": 0,
+          "bits": [ 14 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:37.8-37.12"
+          }
+        },
+        "_07_": {
+          "hide_name": 0,
+          "bits": [ 9 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:38.8-38.12"
+          }
+        },
+        "_08_": {
+          "hide_name": 0,
+          "bits": [ 8 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:39.8-39.12"
+          }
+        },
+        "_09_": {
+          "hide_name": 0,
+          "bits": [ 10 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:40.8-40.12"
+          }
+        },
+        "_20_": {
+          "hide_name": 0,
+          "bits": [ 5 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:28.10-28.14"
+          }
+        },
+        "_21_": {
+          "hide_name": 0,
+          "bits": [ 6 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:29.10-29.14"
+          }
+        },
+        "_22_": {
+          "hide_name": 0,
+          "bits": [ 7 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:30.10-30.14"
+          }
+        },
+        "_30_": {
+          "hide_name": 0,
+          "bits": [ 15 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:44.8-44.12"
+          }
+        },
+        "clk": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:25.9-25.12"
+          }
+        },
+        "clk_IBUF": {
+          "hide_name": 0,
+          "bits": [ 16 ],
+          "attributes": {
+            "src": "bug_dir/synth.v:46.8-46.16"
+          }
+        }
+      }
+    }
+  }
+}

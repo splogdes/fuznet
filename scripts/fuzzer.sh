@@ -18,7 +18,7 @@ EPOCH_START=$(date +%s)
 DATE_TIME=$(date -d "@$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUT_DIR=${OUT_DIR:-"tmp"}
+OUT_DIR=${OUT_DIR:-"bug_dir"}
 LOG_DIR="$OUT_DIR/logs"
 
 PERMANENT_LOGS=${PERMANENT_LOGS:-"logs"}
@@ -35,7 +35,7 @@ FUZNET_BIN=${FUZNET_BIN:-fuznet}
 SYNTH_TOP=${SYNTH_TOP:-synth}   # RTL (golden) hierarchy root
 NETLIST_TOP=${NETLIST_TOP:-impl} # PnR (gate-level) hierarchy root
 
-FUZZED_NETLIST_V="$OUT_DIR/fuzzed_netlist.v"
+FUZZED_NETLIST_V="$OUT_DIR/bug.v"
 
 PORT_SPEC_JSON=${PORT_SPEC_JSON:-port_spec.json}
 
@@ -138,14 +138,14 @@ info "│ SEED    : $SEED_HEX"
 info "└────────────────────────────────────────────────────────"
 
 # ─────────── 1. Fuzz netlist generation ───────────────────────────────────
-"$FUZNET_BIN"  -l "$CELL_LIBRARY_CP"        \
-               -c "$SETTINGS_TOML_CP"       \
-               -s "$SEED"                   \
-               -v                           \
-               -j                           \
-               -o "${FUZZED_NETLIST_V%.v}"  \
-               >"$LOG_DIR/fuznet.log" 2>&1  || { RESULT_CATEGORY="fuznet_fail"; abort "fuznet failed"; }
-info "fuznet finished"
+# "$FUZNET_BIN"  -l "$CELL_LIBRARY_CP"        \
+#                -c "$SETTINGS_TOML_CP"       \
+#                -s "$SEED"                   \
+#                -v                           \
+#                -j                           \
+#                -o "${FUZZED_NETLIST_V%.v}"  \
+#                >"$LOG_DIR/fuznet.log" 2>&1  || { RESULT_CATEGORY="fuznet_fail"; abort "fuznet failed"; }
+# info "fuznet finished"
 
 # ─────────── 2. Vivado implementation ─────────────────────────────────────
 info "Running Vivado PnR"

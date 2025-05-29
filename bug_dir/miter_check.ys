@@ -1,0 +1,18 @@
+read_verilog hardware/xilinx/cell_sim.v
+
+read_verilog -DGLBL  bug_dir/synth.v
+rename synth synth
+
+read_verilog -DGLBL bug_dir/impl.v
+rename impl impl
+
+miter -equiv -make_assert synth impl eq_top
+
+hierarchy -top eq_top;
+
+proc; flatten;
+
+dffunmap
+
+write_smt2 bug_dir/eq_top.smt2
+sat -dump_vcd bug_dir/counter_example.vcd -verify-no-timeout -timeout 1 -prove-asserts -tempinduct eq_top
