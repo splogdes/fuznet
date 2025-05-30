@@ -13,7 +13,7 @@ namespace fuznet {
 
 class Orchestrator {
 public:
-    Orchestrator(const std::string& lib_yaml    = "hardware/cells/xilinx.yaml",
+    Orchestrator(const std::string& lib_yaml    = "hardware/xilinx/cells.yaml",
                  const std::string& config_toml = "config/settings.toml",
                  unsigned           seed        = std::random_device{}(),
                  bool               verbose     = false,

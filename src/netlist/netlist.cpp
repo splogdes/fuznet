@@ -7,6 +7,8 @@
 #include <queue>
 #include <random>
 #include <stdexcept>
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 std::string Net::lable(int width) const {
     if (!name.empty()) return name;
@@ -47,14 +49,11 @@ std::string Module::lable(int width) const {
 }
 
 Netlist::Netlist(Library& library_ref, std::mt19937_64& rng)
-    : lib{library_ref}, rng{rng} {
+    : lib{library_ref}, rng{rng} {}
 
-    Net* input_net = make_net();
-    Net* clock_net = make_net();
-
-    input_net->net_type = NetType::EXT_IN;
-    clock_net->net_type = NetType::EXT_CLK;
-    clock_net->name     = "clk";
+void Netlist::add_initial_nets() {
+    Net* input_net = make_net(NetType::EXT_IN);
+    Net* clock_net = make_net(NetType::EXT_CLK, "clk");
 
     add_buffer(
         input_net, lib.get_random_buffer(NetType::EXT_IN, NetType::LOGIC)
@@ -63,13 +62,13 @@ Netlist::Netlist(Library& library_ref, std::mt19937_64& rng)
         clock_net, lib.get_random_buffer(NetType::EXT_CLK, NetType::CLK)
     );
 }
+    
 
 Netlist::~Netlist() = default;
 
 void Netlist::add_external_nets(size_t number) {
     for (size_t i = 0; i < number; ++i) {
-        Net* ext_net = make_net();
-        ext_net->net_type = NetType::EXT_IN;
+        Net* ext_net = make_net(NetType::EXT_IN);
 
         add_buffer(
             ext_net, lib.get_random_buffer(NetType::EXT_IN, NetType::LOGIC)
@@ -83,10 +82,8 @@ void Netlist::add_random_module() {
 }
 
 void Netlist::add_undriven_nets(NetType type, size_t n) {
-    for (size_t i = 0; i < n; ++i) {
-        Net* new_net = make_net();
-        new_net->net_type = type;
-    }
+    for (size_t i = 0; i < n; ++i)
+        make_net(type);
 }
 
 void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, NetType type) {
@@ -187,14 +184,15 @@ void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec) {
     input_port->net = drive_net;
     drive_net->add_sink(input_port);
 
-    Net* new_net = make_net();
-    new_net->net_type = output_port->net_type;
+    Net* new_net = make_net(output_port->net_type);
     output_port->net  = new_net;
     new_net->driver   = output_port;
 }
 
-Module* Netlist::make_module(const ModuleSpec& spec_ref, bool connect_random) {
-    auto module_obj = std::make_unique<Module>(get_next_id(), spec_ref, rng);
+Module* Netlist::make_module(const ModuleSpec& spec_ref, bool connect_random, int id) {
+    if (id < 0)
+        id = get_next_id();
+    auto module_obj = std::make_unique<Module>(id, spec_ref, rng);
     Module* module_ptr = module_obj.get();
     modules.push_back(std::move(module_obj));
 
@@ -209,8 +207,7 @@ Module* Netlist::make_module(const ModuleSpec& spec_ref, bool connect_random) {
     }
 
     for (auto& output_port : module_ptr->outputs) {
-        Net* dest = make_net();
-        dest->net_type = output_port->net_type;
+        Net* dest = make_net(output_port->net_type);
         output_port->net = dest;
         dest->driver = output_port.get();
     }
@@ -255,10 +252,13 @@ std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_at_seq) c
     return visited;
 }
 
-Net* Netlist::make_net(std::string explicit_name) {
+Net* Netlist::make_net(NetType type,const std::string& name, int id) {
+    if (id < 0)
+        id = get_next_id();
     auto net_obj = std::make_unique<Net>();
-    net_obj->id   = get_next_id();
-    net_obj->name = std::move(explicit_name);
+    net_obj->id = id;
+    net_obj->net_type = type;
+    net_obj->name = std::move(name);
     Net* net_ptr  = net_obj.get();
     nets.push_back(std::move(net_obj));
     return net_ptr;
@@ -392,6 +392,115 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const 
     }
     os << "}\n";
 }
+
+void Netlist::emit_json(const std::string& output_file) const {
+
+    nlohmann::json json_data;
+
+    json_data["nets"] = nlohmann::json::array();
+    
+    for (const auto& net_ptr : nets) {
+        nlohmann::json net_json;
+        net_json["id"] = net_ptr->id;
+        net_json["name"] = net_ptr->name;
+        net_json["type"] = static_cast<int>(net_ptr->net_type);
+        json_data["nets"].push_back(net_json);
+    }
+
+    json_data["modules"] = nlohmann::json::array();
+    for (const auto& module_ptr : modules) {
+        nlohmann::json module_json;
+        module_json["id"] = module_ptr->id;
+        module_json["name"] = module_ptr->spec.name;
+
+        auto port_to_json = [](const Port* port) {
+            nlohmann::json port_json;
+            port_json["width"] = port->spec.width;
+            port_json["net_type"] = static_cast<int>(port->net_type);
+            if (port->net)
+                port_json["net_id"] = port->net->id;
+            return port_json;
+        };
+
+        for (const auto& port_ptr : module_ptr->inputs) 
+            module_json["ports"][port_ptr->spec.name] = port_to_json(port_ptr.get());
+
+        for (const auto& port_ptr : module_ptr->outputs) 
+            module_json["ports"][port_ptr->spec.name] = port_to_json(port_ptr.get());
+
+        module_json["params"] = nlohmann::json::object();
+        for (const auto& param : module_ptr->param_values) {
+            module_json["params"][param.first] = param.second;
+        }
+
+        json_data["modules"].push_back(module_json);
+
+    }
+    
+    std::ofstream json_file(output_file);
+    json_file << std::setw(4) << json_data << std::endl;
+    json_file.close();
+
+}
+
+void Netlist::load_from_json(const std::string& input_file) {
+    std::ifstream json_file(input_file);
+    if (!json_file.is_open()) {
+        throw std::runtime_error("Failed to open JSON file: " + input_file);
+    }
+
+    nlohmann::json json_data;
+    json_file >> json_data;
+
+    nets.clear();
+    modules.clear();
+
+    for (const auto& net_json : json_data["nets"]) {
+        std::string name = net_json.value("name", "");
+        int id = net_json.value("id", -1);
+        if (id < 0) {
+            throw std::runtime_error("Invalid net ID in JSON: " + std::to_string(id));
+        }
+        NetType type = static_cast<NetType>(net_json.value("type", -1));
+        make_net(type, name, id);
+    }
+
+    for (const auto& module_json : json_data["modules"]) {
+        int id = module_json.value("id", -1);
+        if (id < 0) {
+            throw std::runtime_error("Invalid module ID in JSON: " + std::to_string(id));
+        }
+        std::string name = module_json.value("name", "");
+        ModuleSpec spec = lib.get_module(name);
+        Module* module_ptr = make_module(spec, false, id);
+
+        for (auto& port_ptr : module_ptr->inputs) {
+            auto port_json = module_json["ports"][port_ptr->spec.name];
+            int net_id = port_json.value("net_id", -1);
+            if (net_id >= 0) {
+                Net* net = get_net(net_id);
+                port_ptr->net = net;
+                net->add_sink(port_ptr.get());
+            }
+        }
+
+        for (auto& port_ptr : module_ptr->outputs) {
+            auto port_json = module_json["ports"][port_ptr->spec.name];
+            int net_id = port_json.value("net_id", -1);
+            if (net_id >= 0) {
+                Net* net = get_net(net_id);
+                port_ptr->net = net;
+                net->driver = port_ptr.get();
+            }
+        }
+
+        for (const auto& param : module_json["params"].items()) {
+            module_ptr->param_values[param.key()] = param.value();
+        }
+    }
+}
+
+    
 
 void Netlist::print(bool only_stats) const {
     

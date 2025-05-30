@@ -67,6 +67,7 @@ public:
     Netlist(Library& lib, std::mt19937_64& rng);
     ~Netlist();
 
+    void add_initial_nets();
     void add_random_module();
     void add_external_nets(size_t number = 1);
     void add_undriven_nets(NetType type = NetType::LOGIC, size_t number = 1);
@@ -76,17 +77,19 @@ public:
 
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
+    void emit_json(const std::string& output_file) const;
+    void load_from_json(const std::string& input_file);
 
     void print(bool only_stats = true) const;
     NetlistStats get_stats() const;
 
-    Net* make_net(std::string explicit_name = "");
-
-private:
+    
+    private:
     void          add_buffer(Net* net, const ModuleSpec& buffer);
     Net*          get_random_net(std::function<bool(const Net*)> filter = nullptr) const;
+    Net*          make_net(NetType type, const std::string& name = "", int id = -1);
     std::set<int> get_combinational_group(Module* module, bool stop_at_seq = false) const;
-    Module*       make_module(const ModuleSpec& ms, bool connect_random = true);
+    Module*       make_module(const ModuleSpec& ms, bool connect_random = true, int id = -1);
 
     int  get_next_id() { return id_counter++; }
     int  id_width() const { return static_cast<int>(std::log10(id_counter)) + 1; }
