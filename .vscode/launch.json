@@ -6,7 +6,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/fuznet",
-      "args": ["-c", "config/settings.toml", "-l", "hardware/cells/xilinx.yaml"],
+      "args": ["-c", "config/settings.toml", "-l", "hardware/xilinx/cells.yaml", "-s", "5" ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

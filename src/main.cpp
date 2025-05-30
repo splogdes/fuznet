@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         fuznet::Orchestrator orch(lib_cfg, settings_cfg, seed, verbose, animate, json_stats);
         orch.run(out_prefix);
 
-        fuznet::Reducer reducer(lib_cfg, out_prefix + "_netlist.json", out_prefix + "_reduced_netlist.json", seed, verbose);
+        fuznet::Reducer reducer(lib_cfg, out_prefix + "_netlist.json", out_prefix + "_reduced_netlist", seed, verbose);
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << '\n';

@@ -7,8 +7,10 @@
 #include <queue>
 #include <random>
 #include <stdexcept>
+#include <unordered_set>
 #include <nlohmann/json.hpp>
 #include <fstream>
+
 
 std::string Net::lable(int width) const {
     if (!name.empty()) return name;
@@ -268,6 +270,69 @@ Net* Netlist::get_net(int id) {
     for (auto& net_ptr : nets)
         if (net_ptr->id == static_cast<size_t>(id)) return net_ptr.get();
     throw std::runtime_error("Net not found");
+}
+
+void Netlist::remove_other_nets(const int& output_id) {
+    Net* out_net = get_net(output_id);
+
+    if (out_net->net_type != NetType::EXT_OUT)
+        throw std::invalid_argument("Output net must be of type EXT_OUT");
+
+    std::unordered_set<int> keep_nets;
+    std::unordered_set<int> keep_modules;
+    std::queue<Net*> work;
+
+    keep_nets.insert(out_net->id);
+    work.push(out_net);
+
+    while (!work.empty()) {
+        Net* current = work.front();
+        work.pop();
+
+        if (current->driver) {
+            Port* module = current->driver;
+            if (keep_modules.insert(module->parent->id).second) {
+                for (const auto& input_port : module->parent->inputs) {
+                    if (keep_nets.insert(input_port->net->id).second) {
+                        work.push(input_port->net);
+                    }
+                }
+            }
+        }
+    }
+
+    modules.erase(
+        std::remove_if(modules.begin(), modules.end(),
+                       [&](const std::unique_ptr<Module>& m) {
+                           return !keep_modules.contains(m->id);
+                       }),
+        modules.end()
+    );
+
+    nets.erase(
+        std::remove_if(nets.begin(), nets.end(),
+                       [&](const std::unique_ptr<Net>& n) {
+                           return !keep_nets.contains(n->id);
+                       }),
+        nets.end()
+    );
+
+    for (auto& net_ptr : nets)
+        net_ptr->sinks.erase(
+            std::remove_if(net_ptr->sinks.begin(), net_ptr->sinks.end(),
+                           [&](Port* p) { return !keep_modules.contains(p->parent->id); }),
+            net_ptr->sinks.end()
+        );
+
+    for (auto& module_ptr : modules) {
+        for (auto& port_ptr : module_ptr->inputs)
+            if (!keep_nets.contains(port_ptr->net->id)) 
+                port_ptr->net = nullptr;
+
+        for (auto& port_ptr : module_ptr->outputs)
+            if (!keep_nets.contains(port_ptr->net->id))
+                port_ptr->net = nullptr;
+    }
 }
 
 void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const {

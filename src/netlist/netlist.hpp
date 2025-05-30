@@ -74,6 +74,7 @@ public:
     void drive_undriven_nets(double sequential_probability = 0.5, bool limit_to_one = false, NetType type = NetType::LOGIC);
     void switch_up();
     void buffer_unconnected_outputs();
+    void remove_other_nets(const int& output_id);
 
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
