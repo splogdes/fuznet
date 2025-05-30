@@ -1,5 +1,7 @@
-#include "library.hpp"
 #include <yaml-cpp/yaml.h>
+#include <iostream>
+
+#include "library.hpp"
 
 Library::Library(const std::string& filename, std::mt19937_64& rng)
     : rng(rng) {
@@ -102,4 +104,14 @@ const ModuleSpec& Library::get_random_buffer(NetType input_type, NetType output_
                ms.outputs[0].net_type == output_type;
     };
     return get_random_module(filter);
+}
+
+void Library::print() const {
+    std::cout << "Library contains " << modules.size() << " modules:\n";
+    for (const auto& [name, spec] : modules) {
+        std::cout << "  - " << name << ": " << spec.inputs.size() << " inputs, "
+                  << spec.outputs.size() << " outputs, "
+                  << spec.params.size() << " params, "
+                  << "weight: " << spec.weight << "\n";
+    }
 }

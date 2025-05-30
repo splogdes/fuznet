@@ -471,7 +471,7 @@ void Netlist::load_from_json(const std::string& input_file) {
             throw std::runtime_error("Invalid module ID in JSON: " + std::to_string(id));
         }
         std::string name = module_json.value("name", "");
-        ModuleSpec spec = lib.get_module(name);
+        const ModuleSpec& spec = lib.get_module(name);
         Module* module_ptr = make_module(spec, false, id);
 
         for (auto& port_ptr : module_ptr->inputs) {

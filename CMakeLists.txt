@@ -53,12 +53,14 @@ add_subdirectory(src/core)
 add_subdirectory(src/netlist)
 add_subdirectory(src/actions)
 add_subdirectory(src/orchestrator)
+add_subdirectory(src/reducer)
 
 add_executable(fuznet src/main.cpp)
 
 target_link_libraries(fuznet
   PRIVATE
     orchestrator
+    reducer
     CLI11::CLI11
 )
 
