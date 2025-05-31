@@ -7,7 +7,6 @@ namespace fuznet {
 
 Reducer::Reducer(const std::string& lib_yaml,
               const std::string& input_json,
-              const std::string& output_json,
               unsigned seed,
               bool verbose)
      : rng(seed),
@@ -16,11 +15,9 @@ Reducer::Reducer(const std::string& lib_yaml,
        verbose(verbose) 
 {       
     netlist.load_from_json(input_json);
-    remove_other_nets(207);
-    dump_json(output_json);
 }
 
-void Reducer::remove_other_nets(const int& output_id) {
+void Reducer::keep_only_net(const int& output_id) {
     netlist.remove_other_nets(output_id);
 }
 

@@ -51,20 +51,19 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
     path = os.path.join(outdir, "eq_top.v")
     with open(path, "w") as f:
         f.write("module eq_top(\n")
-        # Port list
-        all_ports = [clk] + inputs + ["trigger"]
-        for p in all_ports[:-1]:
+
+        input_ports = [clk] + inputs
+        for p in input_ports:
             f.write(f"    input wire {p},\n")
+        for o in outputs:
+            f.write(f"    output wire {o},\n")
         f.write("    output wire trigger\n);\n\n")
 
-        # Internal signals
         for o in outputs:
             f.write(f"    wire {o}_{gate_top};\n")
             f.write(f"    wire {o}_{gold_top};\n")
-            f.write(f"    wire {o};\n")
         f.write("    wire equivalent;\n\n")
 
-        # Instantiate gate-level
         f.write(f"    {gate_top} inst_{gate_top} (\n")
         f.write(f"        .clk({clk}),\n")
         for inp in inputs:
@@ -74,7 +73,6 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
             f.write(f"        .{out}({out}_{gate_top}){comma}\n")
         f.write("    );\n\n")
 
-        # Instantiate golden (RTL)
         f.write(f"    {gold_top} inst_{gold_top} (\n")
         f.write(f"        .clk({clk}),\n")
         for inp in inputs:
@@ -84,7 +82,6 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
             f.write(f"        .{out}({out}_{gold_top}){comma}\n")
         f.write("    );\n\n")
 
-        # Compare outputs
         for out in outputs:
             f.write(f"    assign {out} = ({out}_{gate_top} === {out}_{gold_top});\n")
         f.write("\n")
@@ -92,7 +89,7 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
         f.write("    assign trigger = ~equivalent;\n\n")
         f.write("endmodule\n")
 
-def write_testbench(outdir, tb_name, clk, inputs, seed, cycles, no_vcd=False):
+def write_testbench(outdir, tb_name, clk, inputs, outputs, seed, cycles, no_vcd=False):
     path = os.path.join(outdir, tb_name)
     with open(path, "w") as tb:
         tb.write("#include <verilated.h>\n")
@@ -128,6 +125,8 @@ def write_testbench(outdir, tb_name, clk, inputs, seed, cycles, no_vcd=False):
             tb.write("        tfp->dump(i * 10 + 5);\n")
         tb.write("        if (top->trigger) {\n")
         tb.write("            std::cerr << \"[TB] Triggered at cycle \" << i << std::endl;\n")
+        for out in outputs:
+            tb.write(f"            if (!top->{out}) std::cout << \"[TB] Triggered by wire {out} \" << std::endl;\n")
         if not no_vcd:
             tb.write("            tfp->close();\n")
         tb.write("            return 1;\n        }\n    }\n\n")
@@ -142,7 +141,7 @@ def main():
 
     clk, inputs, outputs = load_ports(os.path.join(args.outdir, args.json))
     write_eq_top(args.outdir, clk, inputs, outputs, args.gate_top, args.gold_top)
-    write_testbench(args.outdir, args.tb, clk, inputs, args.seed, args.cycles, args.no_vcd)
+    write_testbench(args.outdir, args.tb, clk, inputs, outputs, args.seed, args.cycles, args.no_vcd)
 
 if __name__ == "__main__":
     main()

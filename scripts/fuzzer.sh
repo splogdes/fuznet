@@ -138,7 +138,8 @@ info "│ SEED    : $SEED_HEX"
 info "└────────────────────────────────────────────────────────"
 
 # ─────────── 1. Fuzz netlist generation ───────────────────────────────────
-"$FUZNET_BIN"  -l "$CELL_LIBRARY_CP"        \
+"$FUZNET_BIN"  generate                     \
+               -l "$CELL_LIBRARY_CP"        \
                -c "$SETTINGS_TOML_CP"       \
                -s "$SEED"                   \
                -v                           \

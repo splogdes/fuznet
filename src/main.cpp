@@ -15,39 +15,56 @@ int main(int argc, char** argv) {
         std::string out_prefix   = "output/output";
         std::string seed_str     = std::to_string(std::random_device{}());
 
+        std::string json_netlist = "output/output_netlist.json";
+        int         keep_only    = -1;
+
         bool animate    = false;
         bool verbose    = false;
         bool show_ver   = false;
         bool json_stats = false;
 
         app.add_option("-l,--lib",     lib_cfg,      "Cell library YAML");
-        app.add_option("-c,--config",  settings_cfg, "Settings TOML");
         app.add_option("-s,--seed",    seed_str,     "Random seed");
-        app.add_option("-o,--output",  out_prefix,   "Output prefix");
-        app.add_flag  ("-a,--animate", animate,      "Write DOT after each step");
         app.add_flag  ("-v,--verbose", verbose,      "Print chosen options");
-        app.add_flag  ("-j,--json",    json_stats,   "Write JSON stats");
         app.add_flag  ("--version",    show_ver,     "Show version");
+
+        app.fallthrough();
+
+        auto generate_mode = app.add_subcommand("generate", "Generate a new netlist");
+        generate_mode->add_flag  ("-a,--animate", animate,      "Write DOT after each step");
+        generate_mode->add_flag  ("-j,--json",    json_stats,   "Write JSON stats");
+        generate_mode->add_option("-c,--config",  settings_cfg, "Settings TOML");
+        generate_mode->add_option("-o,--output",  out_prefix,   "Output prefix");
+        
+        auto reducer_mode = app.add_subcommand("reduce", "Reduce netlist to a single output net");
+        reducer_mode->add_option("-i,--input",     json_netlist, "Input JSON netlist")->required();
+        reducer_mode->add_option("-o,--output",    out_prefix,   "Output prefix");
+        reducer_mode->add_option("-r,--keep-only", keep_only,    "Keep only this outout net and remove othets")->required();
+
 
         CLI11_PARSE(app, argc, argv);
 
         if (show_ver) {
-            std::cout << "Fuznet 0.1.0\n";
+            std::cout << "Fuznet 0.3.1\n";
             return 0;
         }
 
         if (verbose) {
             std::cout << "lib      : " << lib_cfg      << '\n'
-                      << "settings : " << settings_cfg << '\n'
                       << "seed     : " << seed_str     << '\n';
         }
 
         unsigned seed = std::stoul(seed_str);
 
-        fuznet::Orchestrator orch(lib_cfg, settings_cfg, seed, verbose, animate, json_stats);
-        orch.run(out_prefix);
+        if (*generate_mode) {
+            fuznet::Orchestrator orch(lib_cfg, settings_cfg, seed, verbose, animate, json_stats);
+            orch.run(out_prefix);
+        }
 
-        fuznet::Reducer reducer(lib_cfg, out_prefix + "_netlist.json", out_prefix + "_reduced_netlist", seed, verbose);
+        if (*reducer_mode) {
+            fuznet::Reducer reducer(lib_cfg, json_netlist, seed, verbose);
+            reducer.keep_only_net(keep_only);
+        }
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << '\n';
