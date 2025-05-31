@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
         if (*reducer_mode) {
             fuznet::Reducer reducer(lib_cfg, json_netlist, seed, verbose);
             reducer.keep_only_net(keep_only);
+            reducer.write_outputs(out_prefix);
         }
 
     } catch (const std::exception& e) {

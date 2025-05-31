@@ -14,6 +14,7 @@ source "$(dirname "$0")/../flows/fuzzing/20_impl.sh"
 source "$(dirname "$0")/../flows/fuzzing/30_struct.sh"
 source "$(dirname "$0")/../flows/fuzzing/40_miter.sh"
 source "$(dirname "$0")/../flows/fuzzing/50_verilator.sh"
+source "$(dirname "$0")/../flows/fuzzing/70_reduction.sh"
 # Optional SMT checks
 source "$(dirname "$0")/../flows/fuzzing/60_bmc.sh"
 source "$(dirname "$0")/../flows/fuzzing/61_induct.sh"
@@ -78,7 +79,7 @@ on_exit() {
            "$in_nets" "$output_nets" "$total_nets" \
            "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
 
-    rm -rf "$OUT_DIR"
+    # rm -rf "$OUT_DIR"
 }
 
 capture_failed_seed() {
@@ -101,14 +102,14 @@ info "│ PRIMS   : $PRIMS_V"
 info "│ SEED    : $SEED_HEX"
 info "└───────────────────────────────────────────────────────"
 
-# ───── stage 10 – fuzzed netlist generation ──────────────────────────────
+# ───── fuzzed netlist generation ──────────────────────────────
 if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
     RESULT_CATEGORY="fuznet_fail"
     capture_failed_seed "fuznet failed"
     exit 1
 fi
 
-# ───── stage 20 – Vivado PnR ──────────────────────────────────────────────
+# ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
 run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
 case $impl_ret in
@@ -117,13 +118,13 @@ case $impl_ret in
     2) RESULT_CATEGORY="vivado_crash"; exit 2 ;;
 esac
 
-# ───── stage 30 – structural equiv (Yosys) ────────────────────────────────
+# ───── structural equiv (Yosys) ───────────────────────────────
 if run_struct "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR"; then
     RESULT_CATEGORY="structural_pass"
     exit 0
 fi
 
-# ───── stage 40 – SAT miter (Yosys-sat) ───────────────────────────────────
+# ───── SAT miter (Yosys-sat) ──────────────────────────────────
 miter_ret=0
 run_miter "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || miter_ret=$?
 
@@ -136,7 +137,7 @@ elif (( miter_ret == 2 )); then
     exit 1
 fi
 
-# ───── stage 50 – Verilator simulation fallback ──────────────────────────
+# ───── Verilator simulation fallback ──────────────────────────
 verilator_ret=0
 run_verilator "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
 
@@ -146,7 +147,7 @@ if (( verilator_ret == 2 )); then
     exit 1
 fi
 
-# ───── optional SMTBMC (Z3) checks ───────────────────────────────────────
+# ───── optional SMTBMC (Z3) checks ────────────────────────────
 if (( USE_SMTBMC )); then
     smt="$OUT_DIR/eq_top.smt2"
     if run_z3_smt "$OUT_DIR" "$smt" "$LOG_DIR"; then
@@ -164,7 +165,7 @@ if (( USE_SMTBMC )); then
     fi
 fi
 
-# ───── result handling ────────────────────────────────────────────────
+# ───── result handling ────────────────────────────────────────
 case "$miter_ret:$verilator_ret" in
     "1:1") RESULT_CATEGORY="miter_fail_verilator_fail"    ;;
     "1:0") RESULT_CATEGORY="miter_fail_verilator_pass"    ;   capture_failed_seed "miter failed, but Verilator passed"; exit 0 ;;
@@ -172,7 +173,41 @@ case "$miter_ret:$verilator_ret" in
     "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass" ;   exit 0 ;;
 esac
 
-# ───── Reduction of failed seeds ─────────────────────────────────────
+# ───── Reduction of failed seeds ─────────────────────────────────
 
-capture_failed_seed "miter failed, Verilator also failed"
+reduction_out_dir="$OUT_DIR/reduction"
+reduction_log_dir="$reduction_out_dir/logs"
+
+mkdir -p "$reduction_out_dir"
+mkdir -p "$reduction_log_dir"
+
+if ! run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
+    capture_failed_seed "reduction failed"
+    RESULT_CATEGORY="reduction_fail"
+    exit 1
+fi
+
+# ───── Rerun Vivado on reduced netlist ─────────────────────────────
+if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
+    capture_failed_seed "reduced netlist Vivado failed"
+    RESULT_CATEGORY="reduced_vivado_fail"
+    exit 1
+fi
+
+# ───── Rerun Verilator simulation ──────────────────────────────────
+verilator_ret=0
+run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
+if (( verilator_ret == 2 )); then
+    capture_failed_seed "reduced netlist Verilator error"
+    RESULT_CATEGORY="reduced_verilator_error"
+    exit 1
+fi
+
+case "$miter_ret:$verilator_ret" in
+    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success" ;;
+    "1:0") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"  ;;
+    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" ;;
+    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  ;;
+esac
+
 exit 0

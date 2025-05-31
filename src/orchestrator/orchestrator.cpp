@@ -125,7 +125,7 @@ void Orchestrator::run(const std::string& output_prefix) {
     
     dump_dot();
 
-    netlist.emit_json(output_prefix + "_netlist.json");
+    netlist.emit_json(output_prefix + ".json");
 
     if(verbose) {
         std::cout << "======== Netlist Generated =========\n";

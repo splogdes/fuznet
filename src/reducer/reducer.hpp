@@ -15,7 +15,7 @@ public:
             bool               verbose      = false);
 
     void keep_only_net(const int& output_id);
-    void dump_json(const std::string& output_json) const;
+    void write_outputs(const std::string& output_json) const;
 
 private:
     std::mt19937_64 rng;

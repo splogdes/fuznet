@@ -326,13 +326,20 @@ void Netlist::remove_other_nets(const int& output_id) {
 
     for (auto& module_ptr : modules) {
         for (auto& port_ptr : module_ptr->inputs)
-            if (!keep_nets.contains(port_ptr->net->id)) 
-                port_ptr->net = nullptr;
-
-        for (auto& port_ptr : module_ptr->outputs)
             if (!keep_nets.contains(port_ptr->net->id))
-                port_ptr->net = nullptr;
+                std::runtime_error("Input port net not found in keep set");
+
+        for (auto& port_ptr : module_ptr->outputs) {
+            if (!keep_nets.contains(port_ptr->net->id)) {
+                Net* net = make_net(port_ptr->net_type);
+                port_ptr->net = net;
+                net->driver = port_ptr.get();
+            }
+        }
     }
+
+    buffer_unconnected_outputs();
+    
 }
 
 void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const {
@@ -391,8 +398,10 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const 
 
         for (size_t i = 0; i < ordered_ports.size(); ++i) {
             const Port* port_ref = ordered_ports[i];
-            os << "    ." << port_ref->spec.name << "("
-               << port_ref->net->lable(width) << ")";
+            os << "    ." << port_ref->spec.name << "(";
+            if (port_ref->net) 
+                os << port_ref->net->lable(width);
+            os << ")";
             if (i + 1 < ordered_ports.size()) os << ",";
             os << "\n";
         }
@@ -523,6 +532,7 @@ void Netlist::load_from_json(const std::string& input_file) {
     for (const auto& net_json : json_data["nets"]) {
         std::string name = net_json.value("name", "");
         int id = net_json.value("id", -1);
+        id_counter = std::max(id_counter, id + 1);
         if (id < 0) {
             throw std::runtime_error("Invalid net ID in JSON: " + std::to_string(id));
         }
@@ -532,6 +542,7 @@ void Netlist::load_from_json(const std::string& input_file) {
 
     for (const auto& module_json : json_data["modules"]) {
         int id = module_json.value("id", -1);
+        id_counter = std::max(id_counter, id + 1);
         if (id < 0) {
             throw std::runtime_error("Invalid module ID in JSON: " + std::to_string(id));
         }
@@ -591,11 +602,18 @@ void Netlist::print(bool only_stats) const {
                       << std::setw(12) << port_ptr->spec.name
                       << "  net " << std::setw(4) << port_ptr->net->id
                       << " (" << static_cast<int>(port_ptr->net_type) << ")\n";
-        for (const auto& port_ptr : module_ptr->outputs)
+        for (const auto& port_ptr : module_ptr->outputs) {
+            if (port_ptr->net) {
             std::cout << "    out "
-                      << std::setw(12) << port_ptr->spec.name
-                      << "  net " << std::setw(4) << port_ptr->net->id
-                      << " (" << static_cast<int>(port_ptr->net_type) << ")\n";
+                  << std::setw(12) << port_ptr->spec.name
+                  << "  net " << std::setw(4) << port_ptr->net->id
+                  << " (" << static_cast<int>(port_ptr->net_type) << ")\n";
+            } else {
+            std::cout << "    out "
+                  << std::setw(12) << port_ptr->spec.name
+                  << "  net (none)\n";
+            }
+        }
     }
 }
 
