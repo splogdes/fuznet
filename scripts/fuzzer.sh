@@ -79,16 +79,17 @@ on_exit() {
            "$in_nets" "$output_nets" "$total_nets" \
            "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
 
-    # rm -rf "$OUT_DIR"
+    rm -rf "$OUT_DIR"
 }
 
 capture_failed_seed() {
     local msg=$1
-    local save="$PERMANENT_LOGS/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
+    local save="$PERMANENT_LOGS/runs/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
     mkdir -p "$save"
     cp -r "$OUT_DIR"/* "$save/" 2>/dev/null || true
     printf '%-19s | SEED: %-10s | %s\n' "$STAMP" "$SEED_HEX" "$msg" \
         >> "$PERMANENT_LOGS/failed_seeds.log"
+    echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
 }
 
 trap 'on_exit' EXIT

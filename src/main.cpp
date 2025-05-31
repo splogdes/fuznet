@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
         CLI11_PARSE(app, argc, argv);
 
         if (show_ver) {
-            std::cout << "Fuznet 0.3.1\n";
+            std::cout << "Fuznet 0.4.0\n";
             return 0;
         }
 
