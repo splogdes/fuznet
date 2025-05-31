@@ -8,10 +8,6 @@ read_verilog -DGLBL __OUT__/__IMPL__.v
 rename __IMPL__ gate
 show -format dot -prefix __OUT__/impl
 
-select gold
-write_json -noscopeinfo -selected __OUT__/__JSON__
-select -clear
-
 equiv_make gold gate equiv_top;
 
 proc;
