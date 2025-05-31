@@ -40,6 +40,11 @@ PERMANENT_LOGS=${PERMANENT_LOGS:-logs}
 # ───── result bookkeeping & traps ─────────────────────────────────────────
 RESULT_CATEGORY=""
 
+cp $CELL_LIB $VIVADO_TCL $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
+export CELL_LIB="$OUT_DIR/$(basename "$CELL_LIB")"
+export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
+export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
+
 on_exit() {
     local end_time=$(date +%s)
     local runtime=$(( end_time - EPOCH_START ))
@@ -73,7 +78,7 @@ on_exit() {
            "$in_nets" "$output_nets" "$total_nets" \
            "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
 
-    # rm -rf "$OUT_DIR"
+    rm -rf "$OUT_DIR"
 }
 
 capture_failed_seed() {
