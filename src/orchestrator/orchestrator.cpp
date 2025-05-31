@@ -110,6 +110,8 @@ void Orchestrator::run(const std::string& output_prefix) {
         if (animate) std::this_thread::sleep_for(1s);
     };
 
+    netlist.add_initial_nets();
+
     for (int i = 0; i < iterations; ++i) {
         commands[weight_dist(rng)].cmd->execute();
         if (animate) dump_dot();
@@ -122,6 +124,8 @@ void Orchestrator::run(const std::string& output_prefix) {
     netlist.emit_verilog(v, "top");
     
     dump_dot();
+
+    netlist.emit_json(output_prefix + ".json");
 
     if(verbose) {
         std::cout << "======== Netlist Generated =========\n";

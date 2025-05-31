@@ -179,14 +179,14 @@ LUT6_2:
   resource: { lc: 2 }
 
 # Gets mapped to CARRY4 but this has problems with yosys
-# MUXCY:
-#   weight: 1
-#   ports:
-#     CI: { dir: input }
-#     DI: { dir: input }
-#     S:  { dir: input }
-#     O:  { dir: output }
-#   resource: { lc: 1 }
+MUXCY:
+  weight: 1
+  ports:
+    CI: { dir: input }
+    DI: { dir: input }
+    S:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
 
 MUXF5:
   weight: 1
@@ -235,13 +235,13 @@ MUXF8:
 #   resource: { lc: 1 }
 
 # Gets mapped to CARRY4 but this has problems with yosys
-# XORCY:
-#   weight: 1
-#   ports:
-#     CI: { dir: input }
-#     LI:  { dir: input }
-#     O:  { dir: output }
-#   resource: { lc: 1 }
+XORCY:
+  weight: 1
+  ports:
+    CI: { dir: input }
+    LI:  { dir: input }
+    O:  { dir: output }
+  resource: { lc: 1 }
 
 # CARRY4:
 #   weight: 0
@@ -586,6 +586,7 @@ SRLC16E:
     A2: { dir: input }
     A3: { dir: input }
     CLK: { dir: input, type: clk }
+    CE: { dir: input }
     D: { dir: input }
   params:
     INIT: { width: 16 }
@@ -608,7 +609,7 @@ SRLC16E:
 #   resource: { lc: 1 }
 
 CFGLUT5:
-  weight: 1
+  weight: 0
   ports:
     CDO: { dir: output }
     O5: { dir: output }

@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import os
 import sys
+import re
+
+PORT_RE  = re.compile(r'^\s*(input|output)\s+(?:wire\s+)?([A-Za-z_][A-Za-z_0-9]*)')
 
 def parse_args():
     p = argparse.ArgumentParser(
         description="Generate Verilator testbench and top wrapper for eq_top module."
     )
-    p.add_argument("--outdir",  required=True, help="Output directory")
-    p.add_argument("--seed",    required=True, help="Random seed")
-    p.add_argument("--cycles",  required=True, type=int, help="Number of cycles to simulate")
-    p.add_argument("--json",    required=True, help="Path to JSON file with module ports")
+    p.add_argument("--outdir",   required=True, help="Output directory")
+    p.add_argument("--seed",     required=True, help="Random seed")
+    p.add_argument("--cycles",   required=True, type=int, help="Number of cycles to simulate")
     p.add_argument("--gold-top", required=True, help="Name of the golden (RTL) top module")
     p.add_argument("--gate-top", required=True, help="Name of the gate-level top module")
-    p.add_argument("--tb",      required=True, help="Filename for the generated testbench")
+    p.add_argument("--tb",       required=True, help="Filename for the generated testbench")
     p.add_argument(
         "--no-vcd",
         action="store_true",
@@ -22,49 +23,65 @@ def parse_args():
     )
     return p.parse_args()
 
-def load_ports(json_path):
-    data = json.load(open(json_path))
-    module = list(data["modules"].keys())[0]
-    ports = data["modules"][module]["ports"]
-    clk = None
-    inputs, outputs = [], []
-    for name, info in ports.items():
-        clean = name.replace("__", "___05F")
-        if info["direction"] == "input":
-            if "clk" in name:
-                clk = name
-            else:
-                inputs.append(clean)
-        elif info["direction"] == "output":
-            outputs.append(clean)
-        else:
-            raise ValueError(f"Unknown port direction: {info['direction']}")
+def load_ports(path):
+    """
+    Parse a single-module netlist of the form Vivado writes:
+        module synth (port0, port1, ...);
+        input  port0;
+        output port1;
+    Returns (clk, inputs, outputs)
+    """
+    clk      = None
+    inputs   = []
+    outputs  = []
+
+    with open(path) as f:
+        in_header = False
+        for line in f:
+            if line.lstrip().startswith("module"):
+                in_header = True
+                continue
+            if in_header and ");" in line:   # end of port list
+                in_header = False
+                continue
+            m = PORT_RE.match(line)
+            if not m:
+                continue
+            direction, name = m.groups()
+            clean = name.replace("__", "___05F")
+            if direction == "input":
+                if name == "clk" or "clk" in name:
+                    clk = clean
+                else:
+                    inputs.append(clean)
+            elif direction == "output":
+                outputs.append(clean)
+
     if clk is None:
-        raise ValueError("No clock port found")
+        raise ValueError("Clock not found in {}".format(path))
     if not inputs:
-        raise ValueError("No input ports found")
+        raise ValueError("No inputs found in {}".format(path))
     if not outputs:
-        raise ValueError("No output ports found")
+        raise ValueError("No outputs found in {}".format(path))
     return clk, inputs, outputs
 
 def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
     path = os.path.join(outdir, "eq_top.v")
     with open(path, "w") as f:
         f.write("module eq_top(\n")
-        # Port list
-        all_ports = [clk] + inputs + ["trigger"]
-        for p in all_ports[:-1]:
+
+        input_ports = [clk] + inputs
+        for p in input_ports:
             f.write(f"    input wire {p},\n")
+        for o in outputs:
+            f.write(f"    output wire {o},\n")
         f.write("    output wire trigger\n);\n\n")
 
-        # Internal signals
         for o in outputs:
             f.write(f"    wire {o}_{gate_top};\n")
             f.write(f"    wire {o}_{gold_top};\n")
-            f.write(f"    wire {o};\n")
         f.write("    wire equivalent;\n\n")
 
-        # Instantiate gate-level
         f.write(f"    {gate_top} inst_{gate_top} (\n")
         f.write(f"        .clk({clk}),\n")
         for inp in inputs:
@@ -74,7 +91,6 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
             f.write(f"        .{out}({out}_{gate_top}){comma}\n")
         f.write("    );\n\n")
 
-        # Instantiate golden (RTL)
         f.write(f"    {gold_top} inst_{gold_top} (\n")
         f.write(f"        .clk({clk}),\n")
         for inp in inputs:
@@ -84,7 +100,6 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
             f.write(f"        .{out}({out}_{gold_top}){comma}\n")
         f.write("    );\n\n")
 
-        # Compare outputs
         for out in outputs:
             f.write(f"    assign {out} = ({out}_{gate_top} === {out}_{gold_top});\n")
         f.write("\n")
@@ -92,7 +107,7 @@ def write_eq_top(outdir, clk, inputs, outputs, gate_top, gold_top):
         f.write("    assign trigger = ~equivalent;\n\n")
         f.write("endmodule\n")
 
-def write_testbench(outdir, tb_name, clk, inputs, seed, cycles, no_vcd=False):
+def write_testbench(outdir, tb_name, clk, inputs, outputs, seed, cycles, no_vcd=False):
     path = os.path.join(outdir, tb_name)
     with open(path, "w") as tb:
         tb.write("#include <verilated.h>\n")
@@ -128,6 +143,8 @@ def write_testbench(outdir, tb_name, clk, inputs, seed, cycles, no_vcd=False):
             tb.write("        tfp->dump(i * 10 + 5);\n")
         tb.write("        if (top->trigger) {\n")
         tb.write("            std::cerr << \"[TB] Triggered at cycle \" << i << std::endl;\n")
+        for out in outputs:
+            tb.write(f"            if (!top->{out}) std::cout << \"[TB] Triggered by wire {out} \" << std::endl;\n")
         if not no_vcd:
             tb.write("            tfp->close();\n")
         tb.write("            return 1;\n        }\n    }\n\n")
@@ -140,9 +157,9 @@ def main():
     args = parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
-    clk, inputs, outputs = load_ports(os.path.join(args.outdir, args.json))
+    clk, inputs, outputs = load_ports(os.path.join(args.outdir, args.gold_top + ".v"))
     write_eq_top(args.outdir, clk, inputs, outputs, args.gate_top, args.gold_top)
-    write_testbench(args.outdir, args.tb, clk, inputs, args.seed, args.cycles, args.no_vcd)
+    write_testbench(args.outdir, args.tb, clk, inputs, outputs, args.seed, args.cycles, args.no_vcd)
 
 if __name__ == "__main__":
     main()
