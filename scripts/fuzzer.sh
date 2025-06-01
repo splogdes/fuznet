@@ -23,16 +23,18 @@ source "$(dirname "$0")/../flows/fuzzing/61_induct.sh"
 WORKER_ID=${WORKER_ID:-0}
 SYNTH_TOP=${SYNTH_TOP:-synth}     # RTL   hierarchy root
 IMPL_TOP=${IMPL_TOP:-impl}  # gate-level hierarchy root
-FUZZED_TOP="fuzzed_netlist"       # basename (no .v)
+FUZZED_TOP="bug"       # basename (no .v)
 
 USE_SMTBMC=${USE_SMTBMC:-0}       # 1 → run BMC + induction
 
 # ───── directory scaffolding ──────────────────────────────────────────────
 EPOCH_START=$(date +%s)
 STAMP=$(date -d @"$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
+
+SEED=$((0x65868aa0))
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUT_DIR=${OUT_DIR:-"tmp"}
+OUT_DIR=${OUT_DIR:-"bug_dir"}
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
@@ -104,11 +106,11 @@ info "│ SEED    : $SEED_HEX"
 info "└───────────────────────────────────────────────────────"
 
 # ───── fuzzed netlist generation ──────────────────────────────
-if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
-    RESULT_CATEGORY="fuznet_fail"
-    capture_failed_seed "fuznet failed"
-    exit 1
-fi
+# if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
+#     RESULT_CATEGORY="fuznet_fail"
+#     capture_failed_seed "fuznet failed"
+#     exit 1
+# fi
 
 # ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
@@ -192,6 +194,25 @@ fi
 if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
     capture_failed_seed "reduced netlist Vivado failed"
     RESULT_CATEGORY="reduced_vivado_fail"
+    exit 1
+fi
+
+# ───── Rerun structural equiv (Yosys) ───────────────────────────────
+if run_struct "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir"; then
+    RESULT_CATEGORY="structural_pass"
+    exit 0
+fi
+
+# ───── Rerun SAT miter (Yosys-sat) ──────────────────────────────────
+miter_ret=0
+run_miter "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || miter_ret=$?
+
+if (( miter_ret == 0 )); then
+    RESULT_CATEGORY="miter_pass"
+    exit 0
+elif (( miter_ret == 2 )); then
+    RESULT_CATEGORY="miter_unknown"
+    capture_failed_seed "miter unknown state"
     exit 1
 fi
 
