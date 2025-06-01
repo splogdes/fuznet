@@ -1,9 +1,10 @@
 [settings]
 max_iter = 1000
-stop_iter_lambda = 100
+stop_iter_lambda = 20
 start_input_lambda = 2
 start_undriven_lambda = 2
-prob_sequential = 0
+prob_sequential_module = 0.1
+prob_sequential_port = 0.2
 
 [priorities]
 AddRandomModule = 20
