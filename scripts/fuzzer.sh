@@ -84,10 +84,11 @@ on_exit() {
 
 capture_failed_seed() {
     local msg=$1
-    local save="$PERMANENT_LOGS/runs/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
+    local dir=${2:-"common"}
+    local save="$PERMANENT_LOGS/$dir/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
     mkdir -p "$save"
     cp -r "$OUT_DIR"/* "$save/" 2>/dev/null || true
-    printf '%-19s | SEED: %-10s | %s\n' "$STAMP" "$SEED_HEX" "$msg" \
+    printf '%-19s | SEED: %-10s | DIR: %-9s | %s\n' "$STAMP" "$SEED_HEX" "$dir" "$msg" \
         >> "$PERMANENT_LOGS/failed_seeds.log"
     echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
 }
@@ -169,7 +170,7 @@ fi
 # ───── result handling ────────────────────────────────────────
 case "$miter_ret:$verilator_ret" in
     "1:1") RESULT_CATEGORY="miter_fail_verilator_fail"    ;;
-    "1:0") RESULT_CATEGORY="miter_fail_verilator_pass"    ;   capture_failed_seed "miter failed, but Verilator passed"; exit 0 ;;
+    "1:0") RESULT_CATEGORY="miter_fail_verilator_pass"    ;   capture_failed_seed "miter failed, but Verilator passed" "epic"; exit 0 ;;
     "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail" ;;
     "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass" ;   exit 0 ;;
 esac
@@ -183,14 +184,14 @@ mkdir -p "$reduction_out_dir"
 mkdir -p "$reduction_log_dir"
 
 if ! run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
-    capture_failed_seed "reduction failed"
+    capture_failed_seed "reduction failed" "rare"
     RESULT_CATEGORY="reduction_fail"
     exit 1
 fi
 
 # ───── Rerun Vivado on reduced netlist ─────────────────────────────
 if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
-    capture_failed_seed "reduced netlist Vivado failed"
+    capture_failed_seed "reduced netlist Vivado failed" "rare"
     RESULT_CATEGORY="reduced_vivado_fail"
     exit 1
 fi
@@ -199,16 +200,16 @@ fi
 verilator_ret=0
 run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
 if (( verilator_ret == 2 )); then
-    capture_failed_seed "reduced netlist Verilator error"
+    capture_failed_seed "reduced netlist Verilator error" "rare"
     RESULT_CATEGORY="reduced_verilator_error"
     exit 1
 fi
 
 case "$miter_ret:$verilator_ret" in
-    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success" ;;
-    "1:0") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"  ;;
-    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" ;;
-    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  ;;
+    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success"  "epic"      ;;
+    "1:0") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"   "rare"      ;;
+    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" "legendary" ;;
+    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  "rare"      ;;
 esac
 
 exit 0
