@@ -12,7 +12,7 @@ run_reduction() {
 
     wire_to_keep=$(
         grep "\[TB\] Triggered by wire" "$verilator_run_log" \
-            | awk 'NR==1 {print $NF}'
+            | awk 'NR==1 {gsub(/[^0-9]/, "", $NF); print $NF + 0}'
     )
 
     if "$FUZNET_BIN"  reduce                       \
