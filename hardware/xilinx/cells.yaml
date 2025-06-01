@@ -249,11 +249,13 @@ XORCY:
   resources: { lc: 1 }
 
 CARRY4:
-  weight: 0
+  weight: 1
   ports:
     CO: { dir: output, width: 4 }
     O: { dir: output, width: 4 }
-    CI: { dir: input , width: 4 }
+    CI: { dir: input }
+    CYINIT: { dir: input }
+    DI: { dir: input, width: 4 }
     S: { dir: input, width: 4 }
   resources: { lc: 1 }
 
