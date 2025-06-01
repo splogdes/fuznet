@@ -20,8 +20,8 @@ std::string Net::lable(int width) const {
     return "_" + std::string(width - digit_count, '0') + std::to_string(id) + "_";
 }
 
-void Net::remove_sink(PortBit port) {
-    auto it = std::remove(sinks.begin(), sinks.end(), port);
+void Net::remove_sink(PortBit portbit) {
+    auto it = std::remove(sinks.begin(), sinks.end(), portbit);
     sinks.erase(it, sinks.end());
 }
 
@@ -246,16 +246,13 @@ std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_at_seq) c
         for (const PortBit& sink : current->sinks) {
             Module* module = sink.port->parent;
 
-            if (!module->spec.combinational)
-                continue;
-
             for (auto& next_out : module->outputs)
                 for (int i = 0; i < next_out->width; ++i) {
                     const bool edge_is_sequential =
                         module->seq_conns.contains(next_out.get()) &&
                         module->seq_conns.at(next_out.get()).contains(sink.port);
                     
-                    if (edge_is_sequential && stop_at_seq)
+                    if (stop_at_seq && edge_is_sequential)
                        continue; 
                     
                     bfs_queue.push(next_out->nets[i]);
@@ -435,108 +432,112 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const 
 }
 
 
-void Netlist::emit_dotfile(std::ostream& os, const std::string& top_name) const
-{
-    os << "digraph \"" << top_name << "\" {\n"
-       << "label=\"" << top_name << "\";\n"
+void Netlist::emit_dotfile(std::ostream& os, const std::string& top) const {
+    os << "digraph \"" << top << "\" {\n"
+       << "label=\"" << top << "\";\n"
        << "rankdir=\"LR\";\n"
        << "remincross=true;\n";
 
-    for (const auto& mod : modules) {
+    for (const auto& m : modules) {
 
         std::vector<std::string> in_labels;
         std::vector<std::string> out_labels;
+        for (const auto& p : m->inputs) {
 
-        for (const auto& p : mod->inputs) {
             in_labels.push_back(p->spec.name);
 
             if (p->width > 1) {
-                const std::string bus = mod->lable() + "_" + p->spec.name;
+                const std::string bus = m->lable() + "_" + p->spec.name;
 
-                os << "  " << bus
-                   << " [shape=record,style=rounded,"
-                   << "label=\"";
+                os << "  " << bus << R"( [shape=record,style=rounded,label=")";
                 for (int b = p->width - 1; b >= 0; --b) {
                     os << "<s" << b << "> " << b << ':' << b;
                     if (b) os << " | ";
                 }
-                os << "\",color=\"black\",fontcolor=\"black\"];\n";
+                os << R"(",color="black",fontcolor="black"])" << ";\n";
 
                 os << "  " << bus << ":e -> "
-                   << mod->lable() << ":<" << p->spec.name << ">:w "
-                   << "[arrowhead=odiamond,arrowtail=odiamond,dir=both,"
-                   << "style=\"setlinewidth(3)\",color=\"black\",fontcolor=\"black\"];\n";
+                   << m->lable() << ":<" << p->spec.name << ">:w "
+                   << R"([arrowhead=odiamond,arrowtail=odiamond,dir=both,)"
+                   << "style=\"setlinewidth(" << p->width
+                   << ")\",color=\"black\",fontcolor=\"black\"];\n";
             }
         }
 
-        for (const auto& p : mod->outputs)
+        for (const auto& p : m->outputs) {
             out_labels.push_back(p->spec.name);
 
-        os << "  " << mod->lable()
-           << " [shape=record,label=\"{{";
+            if (p->width > 1) {
+                const std::string bus = m->lable() + "_" + p->spec.name;
+
+                os << "  " << bus << R"( [shape=record,style=rounded,label=")";
+                for (int b = p->width - 1; b >= 0; --b) {
+                    os << "<s" << b << "> " << b << ':' << b;
+                    if (b) os << " | ";
+                }
+                os << R"(",color="black",fontcolor="black"])" << ";\n";
+
+                os << "  " << m->lable() << ":<" << p->spec.name << ">:e -> "
+                   << bus << ":w "
+                   << R"([arrowhead=odiamond,arrowtail=odiamond,dir=both,)"
+                   << "style=\"setlinewidth(" << p->width
+                   << ")\",color=\"black\",fontcolor=\"black\"];\n";
+            }
+        }
+
+        os << "  " << m->lable()
+           << R"( [shape=record,label="{{)";
         for (std::size_t i = 0; i < in_labels.size(); ++i) {
             os << '<' << in_labels[i] << "> " << in_labels[i];
             if (i + 1 < in_labels.size()) os << " | ";
         }
-        os << "} | " << mod->spec.name << " | {";
+        os << "} | " << m->spec.name << " | {";
         for (std::size_t i = 0; i < out_labels.size(); ++i) {
             os << '<' << out_labels[i] << "> " << out_labels[i];
             if (i + 1 < out_labels.size()) os << " | ";
         }
-        os << "}}\",color=\"black\",fontcolor=\"black\"];\n";
+        os << R"(}}",color="black",fontcolor="black"])" << ";\n";
     }
 
-    auto edge = [&](const std::string& src, const std::string& dst) {
-        os << "  " << src << " -> " << dst
-           << " [color=\"black\",fontcolor=\"black\"];\n";
+    auto edge = [&](const std::string& s, const std::string& d) {
+        os << "  " << s << " -> " << d
+           << R"( [color="black",fontcolor="black"])" << ";\n";
     };
 
-    for (const auto& net : nets) {
+    for (const auto& n : nets) {
+        const std::string nid = n->lable();
 
-        const std::string n = net->lable();
-        auto emit_net_node = [&](const char* shape) {
-            os << "  " << n << " [shape=" << shape
-               << ",label=\"" << n
-               << "\",color=\"black\",fontcolor=\"black\"];\n";
+        auto net_node = [&](const char* shape) {
+            os << "  " << nid << " [shape=" << shape
+               << ",label=\"" << nid
+               << R"(",color="black",fontcolor="black"])" << ";\n";
         };
 
-        switch (net->net_type) {
+        switch (n->net_type) {
         case NetType::EXT_IN:
-        case NetType::EXT_CLK:
-            emit_net_node("octagon");
-            break;
-        case NetType::EXT_OUT:
-            emit_net_node("octagon");
-            break;
-        default:
-            emit_net_node("diamond");
-            break;
+        case NetType::EXT_CLK: net_node("octagon"); break;
+        case NetType::EXT_OUT: net_node("octagon"); break;
+        default:               net_node("diamond"); break;
         }
 
-        if (net->driver.port) {
-            const Port* dp = net->driver.port;
-            std::string src;
+        if (n->driver.port) {
+            const Port* dp = n->driver.port;
+            std::string src = (dp->width == 1)
+                ? dp->parent->lable() + ":<" + dp->spec.name + '>'
+                : dp->parent->lable() + '_' + dp->spec.name
+                    + ":<s" + std::to_string(n->driver.bit) + '>';
 
-            if (dp->width == 1)
-                src = dp->parent->lable() + ":<" + dp->spec.name + '>';
-            else
-                src = dp->parent->lable() + '_' + dp->spec.name
-                      + ":<s" + std::to_string(net->driver.bit) + '>';
-
-            edge(src, n + ":w");
+            edge(src, nid + ":w");
         }
 
-        for (const PortBit& s : net->sinks) {
+        for (const PortBit& s : n->sinks) {
             const Port* sp = s.port;
-            std::string dst;
+            std::string dst = (sp->width == 1)
+                ? sp->parent->lable() + ":<" + sp->spec.name + '>'
+                : sp->parent->lable() + '_' + sp->spec.name
+                    + ":<s" + std::to_string(s.bit) + '>';
 
-            if (sp->width == 1)
-                dst = sp->parent->lable() + ":<" + sp->spec.name + '>';
-            else
-                dst = sp->parent->lable() + '_' + sp->spec.name
-                      + ":<s" + std::to_string(s.bit) + '>';
-
-            edge(n + ":e", dst);
+            edge(nid + ":e", dst);
         }
     }
 
