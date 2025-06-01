@@ -71,17 +71,6 @@ struct DriveUndrivenNets : ICommand {
     }
 };
 
-struct SwitchUp : ICommand {
-    Netlist& netlist;
-    explicit SwitchUp(Netlist& nl) : netlist(nl) {}
-    const char* name() const override {
-        return "SwitchUp";
-    }
-    void execute() override {
-        netlist.switch_up();
-    }
-};
-
 struct BufferUnconnectedOutputs : ICommand {
     Netlist& netlist;
     explicit BufferUnconnectedOutputs(Netlist& nl) : netlist(nl) {}
