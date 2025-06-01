@@ -11,5 +11,4 @@ AddExternalNet = 5
 AddUndriveNet = 10
 DriveUndrivenNet = 15
 DriveUndrivenNets = 0
-SwitchUp = 0
 BufferUnconnectedOutputs = 0
