@@ -35,7 +35,7 @@ Module::Module(Id module_id, const ModuleSpec& spec_ref, std::mt19937_64& rng)
         outputs.emplace_back(std::make_unique<Port>(port_spec, this));
 
     for (const auto& output_port : outputs)
-        if (seq_conns.contains(output_port.get()))
+        if (spec_ref.seq_conns.contains(output_port->spec.name))
             for (const auto& seq_name : spec_ref.seq_conns.at(output_port->spec.name)) {
                 Port* input_port = get_input(seq_name);
                 if (!input_port) 
@@ -126,20 +126,38 @@ void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, Net
         driver_port->nets[0] = net_ptr.get();
         net_ptr->driver.port = driver_port;
         net_ptr->driver.bit = 0;
-
-        std::set<int> comb_group = get_combinational_group(driver_module, false);
-
+        
         for (auto& input_port : driver_module->inputs) {
+
+            std::set<int> forwad_group = get_combinational_group(input_port.get(), false);
+            std::set<int> comb_group   = get_combinational_group(input_port.get(), true);
+            std::set<int> seq_group;
+
+            for (auto id : forwad_group)
+                if (!comb_group.contains(id))
+                    seq_group.insert(id);
+
             for (int i = 0; i < input_port->width; ++i) {
 
                 auto same_type = [&](const Net* n) {return n->net_type == input_port->net_type; };
 
                 if (input_port->net_type == NetType::LOGIC) {
+
+                    std::function<bool(const Net*)> seq_filter = [&](const Net* n) {
+                        return seq_group.contains(n->id) && same_type(n);
+                    };
+
+                    std::function<bool(const Net*)> comb_filter = [&](const Net* n) {
+                        return !forwad_group.contains(n->id) && same_type(n);
+                    };
+
+                    if (seq_group.empty())
+                        seq_filter = comb_filter;
+
                     Net* source = sequential
-                                    ? get_random_net(same_type)
-                                    : get_random_net(
-                                        [&](const Net* n) { return !comb_group.contains(n->id) && same_type(n); }
-                                    );
+                                    ?  get_random_net(seq_filter)
+                                    :  get_random_net(comb_filter);
+
                     input_port->nets[i] = source;
                     source->add_sink(input_port.get(), i);
                 } else {
@@ -229,14 +247,23 @@ Net* Netlist::get_random_net(std::function<bool(const Net*)> filter) const {
     return candidates[dist(rng)];
 }
 
-std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_at_seq) const {
+std::set<int> Netlist::get_combinational_group(Port* input_port, bool stop_at_seq) const {
     std::set<int> visited;
     std::queue<Net*> bfs_queue;
 
-    for (auto& out_port : seed->outputs)
-        for (int i = 0; i < out_port->width; ++i)
-            if (out_port->net_type != NetType::CLK)
-                bfs_queue.push(out_port->nets[i]);
+    Module* module = input_port->parent;
+    for (auto& next_out : module->outputs) {
+        for (int i = 0; i < next_out->width; ++i) {
+            const bool edge_is_sequential =
+                module->seq_conns.contains(next_out.get()) &&
+                module->seq_conns.at(next_out.get()).contains(input_port);
+            
+            if (stop_at_seq && edge_is_sequential)
+                continue; 
+            
+            bfs_queue.push(next_out->nets[i]);
+        }
+    }
 
     while (!bfs_queue.empty()) {
         Net* current = bfs_queue.front();
@@ -246,7 +273,7 @@ std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_at_seq) c
         for (const PortBit& sink : current->sinks) {
             Module* module = sink.port->parent;
 
-            for (auto& next_out : module->outputs)
+            for (auto& next_out : module->outputs) {
                 for (int i = 0; i < next_out->width; ++i) {
                     const bool edge_is_sequential =
                         module->seq_conns.contains(next_out.get()) &&
@@ -256,7 +283,8 @@ std::set<int> Netlist::get_combinational_group(Module* seed, bool stop_at_seq) c
                        continue; 
                     
                     bfs_queue.push(next_out->nets[i]);
-                }                
+                }
+            }      
         }
     }
     return visited;

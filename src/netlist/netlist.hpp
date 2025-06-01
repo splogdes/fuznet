@@ -101,7 +101,7 @@ private:
     void          add_buffer(Net* net, const ModuleSpec& buffer);
     Net*          get_random_net(std::function<bool(const Net*)> filter = nullptr) const;
     Net*          make_net(NetType type, const std::string& name = "", int id = -1);
-    std::set<int> get_combinational_group(Module* module, bool stop_at_seq = false) const;
+    std::set<int> get_combinational_group(Port* input_port, bool stop_at_seq = true) const;
     Module*       make_module(const ModuleSpec& ms, bool connect_random = true, int id = -1);
 
     int  get_next_id() { return id_counter++; }
