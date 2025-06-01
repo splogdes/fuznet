@@ -31,12 +31,12 @@ Orchestrator::Orchestrator(const std::string& lib_yaml,
     {
 
     commands = {
-        { new AddRandomModule(netlist),            1.0 },
-        { new AddExternalNet(netlist),             1.0 },
-        { new AddUndriveNet(netlist),              1.0 },
-        { new DriveUndrivenNet(netlist, 0.3),      1.0 },
-        { new DriveUndrivenNets(netlist, 0.3),     1.0 },
-        { new BufferUnconnectedOutputs(netlist),   1.0 }
+        { new AddRandomModule(netlist),              1.0 },
+        { new AddExternalNet(netlist),               1.0 },
+        { new AddUndriveNet(netlist),                1.0 },
+        { new DriveUndrivenNet(netlist, 0.3, 0.3),   1.0 },
+        { new DriveUndrivenNets(netlist, 0.3, 0.3),  1.0 },
+        { new BufferUnconnectedOutputs(netlist),     1.0 }
     };
 
     load_config();
@@ -69,7 +69,8 @@ void Orchestrator::load_config() {
     stop_iter_lambda      = set["stop_iter_lambda"].value_or(20);
     start_input_lambda    = set["start_input_lambda"].value_or(5);
     start_undriven_lambda = set["start_undriven_lambda"].value_or(5);
-    seq_probability       = set["prob_sequential"].value_or(0.2);
+    seq_mod_prob          = set["prob_sequential_module"].value_or(0.2);
+    seq_port_prob         = set["prob_sequential_port"].value_or(0.2);
 
     DriveUndrivenNet*  drive_one   = nullptr;
     DriveUndrivenNets* drive_many  = nullptr;
@@ -78,8 +79,14 @@ void Orchestrator::load_config() {
         if (std::string(entry.cmd->name()) == "DriveUndrivenNet")   drive_one  = static_cast<DriveUndrivenNet*>(entry.cmd);
         if (std::string(entry.cmd->name()) == "DriveUndrivenNets")  drive_many = static_cast<DriveUndrivenNets*>(entry.cmd);
     }
-    if (drive_one)  drive_one->seq_probability  = seq_probability;
-    if (drive_many) drive_many->seq_probability = seq_probability;
+    if (drive_one)  {
+        drive_one->seq_mod_prob  = seq_mod_prob;
+        drive_one->seq_port_prob = seq_port_prob;
+    }
+    if (drive_many) {
+        drive_many->seq_mod_prob = seq_mod_prob;
+        drive_many->seq_port_prob = seq_port_prob;
+    }
 
     if (!verbose) return;
 
@@ -88,7 +95,8 @@ void Orchestrator::load_config() {
     std::cout << "stop_iter_lambda:         " << stop_iter_lambda      << '\n';
     std::cout << "start_input_lambda:       " << start_input_lambda    << '\n';
     std::cout << "start_undriven_lambda:    " << start_undriven_lambda << '\n';
-    std::cout << "prob_sequential:          " << seq_probability       << "\n\n";
+    std::cout << "prob_sequential_module:   " << seq_mod_prob          << "\n";
+    std::cout << "prob_sequential_port:     " << seq_port_prob         << "\n\n";
     std::cout << "      --- command weights ---\n";
     for (const auto& entry : commands)
     std::cout << std::left << std::setw(26) << entry.cmd->name() << " : " << entry.weight << '\n';
@@ -117,7 +125,7 @@ void Orchestrator::run(const std::string& output_prefix) {
         if (animate) dump_dot();
     }
     
-    netlist.drive_undriven_nets(seq_probability);
+    netlist.drive_undriven_nets(seq_mod_prob, seq_port_prob);
     netlist.buffer_unconnected_outputs();
     
     std::ofstream v(verilog_path);
@@ -150,7 +158,8 @@ void Orchestrator::json_dump(const std::string& output_prefix) const {
         {"stop_iter_lambda", stop_iter_lambda},
         {"start_input_lambda", start_input_lambda},
         {"start_undriven_lambda", start_undriven_lambda},
-        {"prob_sequential", seq_probability}
+        {"seq_mod_prob", seq_mod_prob},
+        {"seq_port_prob", seq_port_prob}
     };
     
     for (const auto& entry : commands) {

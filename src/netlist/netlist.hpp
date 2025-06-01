@@ -84,7 +84,7 @@ public:
     void add_random_module();
     void add_external_nets(size_t number = 1);
     void add_undriven_nets(NetType type = NetType::LOGIC, size_t number = 1);
-    void drive_undriven_nets(double sequential_probability = 0.5, bool limit_to_one = false, NetType type = NetType::LOGIC);
+    void drive_undriven_nets(double seq_mod_prob = 0.5, double seq_port_prob = 0.5, bool limit_to_one = false, NetType type = NetType::LOGIC);
     void buffer_unconnected_outputs();
     void remove_other_nets(const int& output_id);
 

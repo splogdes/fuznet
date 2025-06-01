@@ -46,7 +46,8 @@ private:
 
     int         max_iter               = 0;
     int         stop_iter_lambda       = 0;
-    double      seq_probability        = 0.0;
+    double      seq_mod_prob           = 0.0;
+    double      seq_port_prob          = 0.0;
     int         start_undriven_lambda  = 0;
     int         start_input_lambda     = 0;
     bool        verbose                = false;

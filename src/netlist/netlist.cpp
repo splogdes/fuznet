@@ -104,18 +104,18 @@ void Netlist::add_undriven_nets(NetType type, size_t n) {
         make_net(type);
 }
 
-void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, NetType type) {
+void Netlist::drive_undriven_nets(double seq_mod_prob, double seq_port_prob, bool limit_to_one, NetType type) {
     for (auto& net_ptr : nets) {
         if (net_ptr->driver.port || net_ptr->net_type != type) continue;
 
         std::uniform_real_distribution<double> dist(0.0, 1.0);
-        bool sequential = dist(rng) < seq_probability;
+        bool seq_mod = dist(rng) < seq_mod_prob;
 
         auto module_filter = [&](const ModuleSpec& ms) {
             return ms.outputs.size() == 1 &&
                    ms.outputs[0].net_type == type &&
                    ms.outputs[0].width == 1 &&
-                   !(sequential && ms.combinational);
+                   !(seq_mod && ms.combinational);
         };
 
         const ModuleSpec& driver_spec = lib.get_random_module(module_filter);
@@ -139,6 +139,8 @@ void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, Net
 
             for (int i = 0; i < input_port->width; ++i) {
 
+                bool seq_port = dist(rng) < seq_port_prob;
+
                 auto same_type = [&](const Net* n) {return n->net_type == input_port->net_type; };
 
                 if (input_port->net_type == NetType::LOGIC) {
@@ -154,7 +156,7 @@ void Netlist::drive_undriven_nets(double seq_probability, bool limit_to_one, Net
                     if (seq_group.empty())
                         seq_filter = comb_filter;
 
-                    Net* source = sequential
+                    Net* source = seq_port
                                     ?  get_random_net(seq_filter)
                                     :  get_random_net(comb_filter);
 
