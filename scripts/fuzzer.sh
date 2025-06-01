@@ -143,12 +143,6 @@ fi
 verilator_ret=0
 run_verilator "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
 
-if (( verilator_ret == 2 )); then
-    RESULT_CATEGORY="verilator_error"
-    capture_failed_seed "verilator error"
-    exit 1
-fi
-
 # ───── optional SMTBMC (Z3) checks ────────────────────────────
 if (( USE_SMTBMC )); then
     smt="$OUT_DIR/eq_top.smt2"
@@ -169,10 +163,13 @@ fi
 
 # ───── result handling ────────────────────────────────────────
 case "$miter_ret:$verilator_ret" in
-    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail"    ;;
-    "1:0") RESULT_CATEGORY="miter_fail_verilator_pass"    ;   capture_failed_seed "miter failed, but Verilator passed" "epic"; exit 0 ;;
-    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail" ;;
-    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass" ;   exit 0 ;;
+    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail"       ;;
+    "1:0") RESULT_CATEGORY="miter_fail_verilator_pass"       ;   capture_failed_seed "miter failed, but Verilator passed" "epic"; exit 0 ;;
+    "1:2") RESULT_CATEGORY="miter_fail_verilator_error"      ;   capture_failed_seed "miter failed, Verilator error"      "rare"; exit 1 ;;
+    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail"    ;;
+    "3:2") RESULT_CATEGORY="miter_timeout_verilator_error"   ;   capture_failed_seed "miter timeout, Verilator error"     "rare"; exit 1 ;;
+    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass"    ;   exit 0 ;;
+    *)     RESULT_CATEGORY="miter_unknown_verilator_unknown" ;   capture_failed_seed "miter unknown, Verilator unknown"   "rare"; exit 1 ;;
 esac
 
 # ───── Reduction of failed seeds ─────────────────────────────────
