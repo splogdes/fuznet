@@ -45,40 +45,31 @@ struct AddUndriveNet : ICommand {
 
 struct DriveUndrivenNet : ICommand {
     Netlist& netlist;
-    double seq_probability;
+    double seq_mod_prob;
+    double seq_port_prob;
     NetType type;
-    DriveUndrivenNet(Netlist& nl, double sp, NetType t = NetType::LOGIC)
-        : netlist(nl), seq_probability(sp), type(t) {}
+    DriveUndrivenNet(Netlist& nl, double sm, double sp, NetType t = NetType::LOGIC)
+        : netlist(nl), seq_mod_prob(sm), seq_port_prob(sp), type(t) {}
     const char* name() const override {
         return "DriveUndrivenNet";
     }
     void execute() override {
-        netlist.drive_undriven_nets(seq_probability, true, type);
+        netlist.drive_undriven_nets(seq_mod_prob, seq_port_prob, true, type);
     }
 };
 
 struct DriveUndrivenNets : ICommand {
     Netlist& netlist;
-    double seq_probability;
+    double seq_mod_prob;
+    double seq_port_prob;
     NetType type;
-    DriveUndrivenNets(Netlist& nl, double sp, NetType t = NetType::LOGIC)
-        : netlist(nl), seq_probability(sp), type(t) {}
+    DriveUndrivenNets(Netlist& nl, double sm, double sp, NetType t = NetType::LOGIC)
+        : netlist(nl), seq_mod_prob(sm), seq_port_prob(sp), type(t) {}
     const char* name() const override {
         return "DriveUndrivenNets";
     }
     void execute() override {
-        netlist.drive_undriven_nets(seq_probability, false, type);
-    }
-};
-
-struct SwitchUp : ICommand {
-    Netlist& netlist;
-    explicit SwitchUp(Netlist& nl) : netlist(nl) {}
-    const char* name() const override {
-        return "SwitchUp";
-    }
-    void execute() override {
-        netlist.switch_up();
+        netlist.drive_undriven_nets(seq_mod_prob, seq_port_prob, false, type);
     }
 };
 

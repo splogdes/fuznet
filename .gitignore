@@ -4,5 +4,6 @@ logs/
 .Xil/
 result/
 .env
+.vscode/
 fuznet.log
 clockInfo.txt

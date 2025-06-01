@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 
 enum class PortDir { INPUT, OUTPUT };
@@ -21,11 +22,12 @@ struct ParamSpec {
 };
 
 struct ModuleSpec {
-    std::string                           name;
-    std::vector<PortSpec>                 inputs;
-    std::vector<PortSpec>                 outputs;
-    std::vector<ParamSpec>                params;
-    bool                                  combinational;
-    int                                   weight;
-    std::map<std::string, int>            resource;
+    std::string                                  name;
+    std::vector<PortSpec>                        inputs;
+    std::vector<PortSpec>                        outputs;
+    std::vector<ParamSpec>                       params;
+    std::map<std::string, std::set<std::string>> seq_conns;
+    bool                                         combinational{true};
+    int                                          weight;
+    std::map<std::string, int>                   resource;
 };

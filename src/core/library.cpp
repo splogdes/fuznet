@@ -30,7 +30,12 @@ Library::Library(const std::string& filename, std::mt19937_64& rng)
             else if (type_str == "ext_out")  port_spec.net_type = NetType::EXT_OUT;
             else if (type_str == "ext_in")   port_spec.net_type = NetType::EXT_IN;
             else if (type_str == "logic")    port_spec.net_type = NetType::LOGIC;
-            else throw std::runtime_error("Invalid net type: " + type_str);
+            // At the moment, we treat these as logic nets
+            else if (type_str == "reset")    port_spec.net_type = NetType::LOGIC;
+            else if (type_str == "set")      port_spec.net_type = NetType::LOGIC;
+            else if (type_str == "enable")   port_spec.net_type = NetType::LOGIC;
+
+            else throw std::runtime_error("Invalid port type: " + type_str);
 
             if (dir_str == "input") {
                 port_spec.port_dir = PortDir::INPUT;
@@ -38,6 +43,14 @@ Library::Library(const std::string& filename, std::mt19937_64& rng)
             } else if (dir_str == "output") {
                 port_spec.port_dir = PortDir::OUTPUT;
                 module_spec.outputs.push_back(port_spec);
+                if (port_node["seq_inputs"]) {
+                    module_spec.combinational = false;
+                    const std::vector<std::string> seq_inputs =
+                        port_node["seq_inputs"].as<std::vector<std::string>>();
+                    for (const auto& seq_port_name : seq_inputs)
+                        module_spec.seq_conns[port_spec.name].insert(seq_port_name);
+                }
+
             } else {
                 throw std::runtime_error("Invalid port direction: " + dir_str);
             }
@@ -50,9 +63,6 @@ Library::Library(const std::string& filename, std::mt19937_64& rng)
                 param_spec.width = param_pair.second["width"].as<int>();
                 module_spec.params.push_back(param_spec);
             }
-
-        module_spec.combinational =
-            module_node["combinational"].as<bool>(true);
 
         for (const auto& res_pair : module_node["resources"])
             module_spec.resource[res_pair.first.as<std::string>()] =
