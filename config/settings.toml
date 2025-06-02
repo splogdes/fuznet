@@ -1,14 +1,14 @@
 [settings]
 max_iter = 1000
-stop_iter_lambda = 20
+stop_iter_lambda = 10
 start_input_lambda = 2
 start_undriven_lambda = 2
 prob_sequential_module = 0.1
-prob_sequential_port = 0.2
+prob_sequential_port = 0.05
 
 [priorities]
-AddRandomModule = 20
-AddExternalNet = 5
+AddRandomModule = 10
+AddExternalNet = 2
 AddUndriveNet = 10
 DriveUndrivenNet = 15
 DriveUndrivenNets = 0

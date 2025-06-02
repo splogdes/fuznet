@@ -340,6 +340,10 @@ void Netlist::remove_other_nets(const int& output_id) {
 
     }
 
+    for (const auto& net_ptr : nets)
+        if (net_ptr->name == "clk")
+            keep_nets.insert(net_ptr->id);
+
     modules.erase(
         std::remove_if(modules.begin(), modules.end(),
                        [&](const std::unique_ptr<Module>& m) {
