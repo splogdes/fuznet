@@ -529,7 +529,7 @@ OR2L:
 
 
 RAM16X1S:
-  weight: 10
+  weight: 32
   ports:
     D: { dir: input }
     A0: { dir: input }
@@ -545,7 +545,7 @@ RAM16X1S:
   resources: { lc: 1 }
 
 RAM16X1S_1:
-  weight: 10
+  weight: 32
   ports:
     D: { dir: input }
     A0: { dir: input }
@@ -561,7 +561,7 @@ RAM16X1S_1:
   resources: { lc: 1 }
   
 RAM32X1S:
-  weight: 10
+  weight: 16
   ports:
     D:   { dir: input }
     A0:  { dir: input }
@@ -578,7 +578,7 @@ RAM32X1S:
   resources: { lc: 1 }
 
 RAM32X1S_1:
-  weight: 10
+  weight: 16
   ports:
     D:   { dir: input }
     A0:  { dir: input }
@@ -595,7 +595,7 @@ RAM32X1S_1:
   resources: { lc: 1 }
 
 RAM64X1S:
-  weight: 10
+  weight: 8
   ports:
     D:   { dir: input }
     A0:  { dir: input }
@@ -613,7 +613,7 @@ RAM64X1S:
   resources: { lc: 1 }
 
 RAM64X1S_1:
-  weight: 10
+  weight: 8
   ports:
     D:   { dir: input }
     A0:  { dir: input }
@@ -631,7 +631,7 @@ RAM64X1S_1:
   resources: { lc: 1 }
 
 RAM128X1S:
-  weight: 10
+  weight: 4
   ports:
     D:   { dir: input }
     A0:  { dir: input }
@@ -650,7 +650,7 @@ RAM128X1S:
   resources: { lc: 1 }
 
 RAM128X1S_1:
-  weight: 10
+  weight: 4
   ports:
     D:   { dir: input }
     A0:  { dir: input }
@@ -670,7 +670,7 @@ RAM128X1S_1:
 
 
 RAM256X1S:
-  weight: 1
+  weight: 2
   ports:
     A:   { dir: input, width: 8 }
     D:   { dir: input }
@@ -682,21 +682,21 @@ RAM256X1S:
     IS_WCLK_INVERTED: { width: 1 }
   resources: { lc: 1 }
 
-RAM512X1S:
-  weight: 1
-  ports:
-    A:   { dir: input, width: 9 }
-    D:   { dir: input }
-    WE:  { dir: input, type: enable }
-    WCLK: { dir: input, type: clk }
-    O:   { dir: output, seq_inputs: [D] }
-  params:
-    INIT: { width: 512 }
-    IS_WCLK_INVERTED: { width: 1 }
-  resources: { lc: 1 }
+# RAM512X1S:
+#   weight: 1
+#   ports:
+#     A:   { dir: input, width: 9 }
+#     D:   { dir: input }
+#     WE:  { dir: input, type: enable }
+#     WCLK: { dir: input, type: clk }
+#     O:   { dir: output, seq_inputs: [D] }
+#   params:
+#     INIT: { width: 512 }
+#     IS_WCLK_INVERTED: { width: 1 }
+#   resources: { lc: 1 }
 
 RAM16X2S:
-  weight: 10
+  weight: 8
   ports:
     D0:  { dir: input }
     D1:  { dir: input }
@@ -715,7 +715,7 @@ RAM16X2S:
   resources: { lc: 1 }
 
 RAM32X2S:
-  weight: 10
+  weight: 4
   ports:
     D0:  { dir: input }
     D1:  { dir: input }
@@ -735,7 +735,7 @@ RAM32X2S:
   resources: { lc: 1 }
 
 RAM64X2S:
-  weight: 10
+  weight: 2
   ports:
     D0:  { dir: input }
     D1:  { dir: input }
@@ -756,7 +756,7 @@ RAM64X2S:
   resources: { lc: 1 }
 
 RAM16X4S:
-  weight: 1
+  weight: 4
   ports:
     D0:  { dir: input }
     D1:  { dir: input }
@@ -781,7 +781,7 @@ RAM16X4S:
   resources: { lc: 1 }
 
 RAM32X4S:
-  weight: 1
+  weight: 2
   ports:
     D0:  { dir: input }
     D1:  { dir: input }
@@ -807,7 +807,7 @@ RAM32X4S:
   resources: { lc: 1 }
 
 RAM16X8S:
-  weight: 1
+  weight: 2
   ports:
     D:   { dir: input, width: 8 }
     A0:  { dir: input }
@@ -854,7 +854,7 @@ RAM32X8S:
   resources: { lc: 1 }
 
 RAM16X1D:
-  weight: 1
+  weight: 32
   ports:
     D:      { dir: input }
     A0:     { dir: input }
@@ -875,7 +875,7 @@ RAM16X1D:
   resources: { lc: 1 }
 
 RAM16X1D_1:
-  weight: 1
+  weight: 32
   ports:
     D:      { dir: input }
     A0:     { dir: input }
@@ -896,7 +896,7 @@ RAM16X1D_1:
   resources: { lc: 1 }
 
 RAM32X1D:
-  weight: 1
+  weight: 16
   ports:
     D:      { dir: input }
     A0:     { dir: input }
@@ -919,7 +919,7 @@ RAM32X1D:
   resources: { lc: 1 }
 
 RAM32X1D_1:
-  weight: 1
+  weight: 16
   ports:
     D:      { dir: input }
     A0:     { dir: input }
@@ -942,7 +942,7 @@ RAM32X1D_1:
   resources: { lc: 1 }
 
 RAM64X1D:
-  weight: 1
+  weight: 8
   ports:
     D:      { dir: input }
     A0:     { dir: input }
@@ -967,7 +967,7 @@ RAM64X1D:
   resources: { lc: 1 }
 
 RAM64X1D_1:
-  weight: 1
+  weight: 8
   ports:
     D:      { dir: input }
     A0:     { dir: input }
@@ -992,7 +992,7 @@ RAM64X1D_1:
   resources: { lc: 1 }
 
 RAM128X1D:
-  weight: 1
+  weight: 4
   ports:
     D:     { dir: input }
     A:     { dir: input, width: 7 }
@@ -1007,7 +1007,7 @@ RAM128X1D:
   resources: { lc: 1 }
 
 RAM256X1D:
-  weight: 1
+  weight: 2
   ports:
     D:     { dir: input }
     A:     { dir: input, width: 8 }
@@ -1022,7 +1022,7 @@ RAM256X1D:
   resources: { lc: 1 }
 
 RAM32M:
-  weight: 1
+  weight: 2
   ports:
     DIA:   { dir: input,  width: 2 }
     DIB:   { dir: input,  width: 2 }
@@ -1153,38 +1153,38 @@ RAM64M8:
     IS_WCLK_INVERTED: { width: 1 }
   resources: { lc: 1 }
 
-RAM32X16DR8:
-  weight: 1
-  ports:
-    DIA:   { dir: input, width: 2 }
-    DIB:   { dir: input, width: 2 }
-    DIC:   { dir: input, width: 2 }
-    DID:   { dir: input, width: 2 }
-    DIE:   { dir: input, width: 2 }
-    DIF:   { dir: input, width: 2 }
-    DIG:   { dir: input, width: 2 }
-    DIH:   { dir: input, width: 2 }
-    ADDRA: { dir: input, width: 6 }
-    ADDRB: { dir: input, width: 6 }
-    ADDRC: { dir: input, width: 6 }
-    ADDRD: { dir: input, width: 6 }
-    ADDRE: { dir: input, width: 6 }
-    ADDRF: { dir: input, width: 6 }
-    ADDRG: { dir: input, width: 6 }
-    ADDRH: { dir: input, width: 5 }
-    WE:    { dir: input, type: enable }
-    WCLK:  { dir: input, type: clk }
-    DOA:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOB:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOC:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOD:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOE:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOF:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOG:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-    DOH:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
-  params:
-    IS_WCLK_INVERTED: { width: 1 }
-  resources: { lc: 1 }
+# RAM32X16DR8:
+#   weight: 1
+#   ports:
+#     DIA:   { dir: input, width: 2 }
+#     DIB:   { dir: input, width: 2 }
+#     DIC:   { dir: input, width: 2 }
+#     DID:   { dir: input, width: 2 }
+#     DIE:   { dir: input, width: 2 }
+#     DIF:   { dir: input, width: 2 }
+#     DIG:   { dir: input, width: 2 }
+#     DIH:   { dir: input, width: 2 }
+#     ADDRA: { dir: input, width: 6 }
+#     ADDRB: { dir: input, width: 6 }
+#     ADDRC: { dir: input, width: 6 }
+#     ADDRD: { dir: input, width: 6 }
+#     ADDRE: { dir: input, width: 6 }
+#     ADDRF: { dir: input, width: 6 }
+#     ADDRG: { dir: input, width: 6 }
+#     ADDRH: { dir: input, width: 5 }
+#     WE:    { dir: input, type: enable }
+#     WCLK:  { dir: input, type: clk }
+#     DOA:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOB:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOC:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOD:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOE:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOF:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOG:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#     DOH:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+#   params:
+#     IS_WCLK_INVERTED: { width: 1 }
+#   resources: { lc: 1 }
 
 RAM64X8SW:
   weight: 1
@@ -1208,7 +1208,7 @@ RAM64X8SW:
   resources: { lc: 1 }
 
 ROM16X1:
-  weight: 25
+  weight: 32
   ports:
     A0: { dir: input }
     A1: { dir: input }
@@ -1220,7 +1220,7 @@ ROM16X1:
   resources: { lc: 1 }
 
 ROM32X1:
-  weight: 25
+  weight: 16
   ports:
     A0: { dir: input }
     A1: { dir: input }
@@ -1233,7 +1233,7 @@ ROM32X1:
   resources: { lc: 1 }
 
 ROM64X1:
-  weight: 25
+  weight: 8
   ports:
     A0: { dir: input }
     A1: { dir: input }
@@ -1247,7 +1247,7 @@ ROM64X1:
   resources: { lc: 1 }
 
 ROM128X1:
-  weight: 25
+  weight: 4
   ports:
     A0: { dir: input }
     A1: { dir: input }
@@ -1262,7 +1262,7 @@ ROM128X1:
   resources: { lc: 1 }
 
 ROM256X1:
-  weight: 25
+  weight: 2
   ports:
     A0: { dir: input }
     A1: { dir: input }
