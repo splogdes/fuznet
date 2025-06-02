@@ -328,7 +328,7 @@ void Netlist::remove_other_nets(const int& output_id) {
         work.pop();
 
         if (!current->driver.port) 
-            throw std::runtime_error("Net without driver found");
+            continue;
 
         Module* module = current->driver.port->parent;
 
