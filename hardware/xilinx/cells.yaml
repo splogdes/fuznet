@@ -15,12 +15,12 @@
 #   resources:    - Resource usage annotations, e.g. { lc: 1 }, { io: 1 }
 
 VCC:
-  weight: 1
+  weight: 100
   ports:
     P: { dir: output }
 
 GND:
-  weight: 1
+  weight: 100
   ports:
     G: { dir: output }
 
@@ -39,7 +39,7 @@ IBUF:
 #   resources: { io: 1 }
 
 OBUF:
-  weight: 1
+  weight: 100
   ports:
     I: { dir: input }
     O: { dir: output, type: ext_out }
@@ -93,14 +93,14 @@ BUFG:
 #   resources: { lc: 1 }
 
 INV:
-  weight: 1
+  weight: 100
   ports:
     I: { dir: input }
     O: { dir: output }
   resources: { lc: 1 }
 
 LUT1:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     O:  { dir: output }
@@ -109,7 +109,7 @@ LUT1:
   resources: { lc: 1 }
 
 LUT2:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -119,7 +119,7 @@ LUT2:
   resources: { lc: 1 }
 
 LUT3:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -130,7 +130,7 @@ LUT3:
   resources: { lc: 1 }
 
 LUT4:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -142,7 +142,7 @@ LUT4:
   resources: { lc: 1 }
 
 LUT5:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -155,7 +155,7 @@ LUT5:
   resources: { lc: 1 }
 
 LUT6:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -169,7 +169,7 @@ LUT6:
   resources: { lc: 1 }
 
 LUT6_2:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -185,7 +185,7 @@ LUT6_2:
 
 # Gets mapped to CARRY4 but this has problems with yosys
 MUXCY:
-  weight: 1
+  weight: 100
   ports:
     CI: { dir: input }
     DI: { dir: input }
@@ -194,7 +194,7 @@ MUXCY:
   resources: { lc: 1 }
 
 MUXF5:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -203,7 +203,7 @@ MUXF5:
   resources: { lc: 1 }
 
 MUXF6:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -212,7 +212,7 @@ MUXF6:
   resources: { lc: 1 }
 
 MUXF7:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -221,7 +221,7 @@ MUXF7:
   resources: { lc: 1 }
 
 MUXF8:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -241,7 +241,7 @@ MUXF8:
 
 # Gets mapped to CARRY4 but this has problems with yosys
 XORCY:
-  weight: 1
+  weight: 100
   ports:
     CI: { dir: input }
     LI:  { dir: input }
@@ -249,7 +249,7 @@ XORCY:
   resources: { lc: 1 }
 
 CARRY4:
-  weight: 1
+  weight: 0
   ports:
     CO: { dir: output, width: 4 }
     O: { dir: output, width: 4 }
@@ -280,7 +280,7 @@ CARRY8:
 #   resources: { lc: 1 }
 
 MULT_AND:
-  weight: 1
+  weight: 100
   ports:
     I0: { dir: input }
     I1: { dir: input }
@@ -288,7 +288,7 @@ MULT_AND:
   resources: { lc: 1 }
 
 FDRE:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D, R] }
     C:  { dir: input, type: clk }
@@ -304,7 +304,7 @@ FDRE:
 
 # From older versions of vivado
 FDRE_1:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D, R] }
     C:  { dir: input, type: clk }
@@ -316,7 +316,7 @@ FDRE_1:
   resources: { lc: 1 }
     
 FDSE:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D, S] }
     C:  { dir: input, type: clk }
@@ -331,7 +331,7 @@ FDSE:
   resources: { lc: 1 }
 
 FDSE_1:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D, S] }
     C:  { dir: input, type: clk }
@@ -343,7 +343,7 @@ FDSE_1:
   resources: { lc: 1 }
 
 FDRSE:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D, R, S] }
     C:  { dir: input, type: clk }
@@ -360,7 +360,7 @@ FDRSE:
   resources: { lc: 1 }
 
 FDRSE_1:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D, R, S] }
     C:  { dir: input, type: clk }
@@ -508,7 +508,7 @@ FDRSE_1:
 #   resources: { lc: 1 }
 
 AND2B1L:
-  weight: 1
+  weight: 100
   ports:
     O: { dir: output }
     DI: { dir: input }
@@ -518,7 +518,7 @@ AND2B1L:
   resources: { lc: 1 }
     
 OR2L:
-  weight: 1
+  weight: 100
   ports:
     O:   { dir: output }
     DI:  { dir: input }
@@ -528,10 +528,757 @@ OR2L:
   resources: { lc: 1 }
 
 
-# No RAM cells atm
+RAM16X1S:
+  weight: 10
+  ports:
+    D: { dir: input }
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    WE: { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O: { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM16X1S_1:
+  weight: 10
+  ports:
+    D: { dir: input }
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    WE: { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O: { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+  
+RAM32X1S:
+  weight: 10
+  ports:
+    D:   { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X1S_1:
+  weight: 10
+  ports:
+    D:   { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64X1S:
+  weight: 10
+  ports:
+    D:   { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    A5:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64X1S_1:
+  weight: 10
+  ports:
+    D:   { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    A5:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM128X1S:
+  weight: 10
+  ports:
+    D:   { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    A5:  { dir: input }
+    A6:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 128 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM128X1S_1:
+  weight: 10
+  ports:
+    D:   { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    A5:  { dir: input }
+    A6:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 128 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+
+RAM256X1S:
+  weight: 1
+  ports:
+    A:   { dir: input, width: 8 }
+    D:   { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 256 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM512X1S:
+  weight: 1
+  ports:
+    A:   { dir: input, width: 9 }
+    D:   { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 512 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM16X2S:
+  weight: 10
+  ports:
+    D0:  { dir: input }
+    D1:  { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O0:  { dir: output, seq_inputs: [D0, D1] }
+    O1:  { dir: output, seq_inputs: [D0, D1] }
+  params:
+    INIT_00: { width: 16 }
+    INIT_01: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X2S:
+  weight: 10
+  ports:
+    D0:  { dir: input }
+    D1:  { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O0:  { dir: output, seq_inputs: [D0, D1] }
+    O1:  { dir: output, seq_inputs: [D0, D1] }
+  params:
+    INIT_00: { width: 32 }
+    INIT_01: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64X2S:
+  weight: 10
+  ports:
+    D0:  { dir: input }
+    D1:  { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    A5:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O0:  { dir: output, seq_inputs: [D0, D1] }
+    O1:  { dir: output, seq_inputs: [D0, D1] }
+  params:
+    INIT_00: { width: 64 }
+    INIT_01: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM16X4S:
+  weight: 1
+  ports:
+    D0:  { dir: input }
+    D1:  { dir: input }
+    D2:  { dir: input }
+    D3:  { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O0:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+    O1:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+    O2:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+    O3:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+  params:
+    INIT_00: { width: 16 }
+    INIT_01: { width: 16 }
+    INIT_02: { width: 16 }
+    INIT_03: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X4S:
+  weight: 1
+  ports:
+    D0:  { dir: input }
+    D1:  { dir: input }
+    D2:  { dir: input }
+    D3:  { dir: input }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O0:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+    O1:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+    O2:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+    O3:  { dir: output, seq_inputs: [D0, D1, D2, D3] }
+  params:
+    INIT_00: { width: 32 }
+    INIT_01: { width: 32 }
+    INIT_02: { width: 32 }
+    INIT_03: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM16X8S:
+  weight: 1
+  ports:
+    D:   { dir: input, width: 8 }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, width: 8, seq_inputs: [D] }
+  params:
+    INIT_00: { width: 16 }
+    INIT_01: { width: 16 }
+    INIT_02: { width: 16 }
+    INIT_03: { width: 16 }
+    INIT_04: { width: 16 }
+    INIT_05: { width: 16 }
+    INIT_06: { width: 16 }
+    INIT_07: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X8S:
+  weight: 1
+  ports:
+    D:   { dir: input, width: 8 }
+    A0:  { dir: input }
+    A1:  { dir: input }
+    A2:  { dir: input }
+    A3:  { dir: input }
+    A4:  { dir: input }
+    WE:  { dir: input, type: enable }
+    WCLK: { dir: input, type: clk }
+    O:   { dir: output, width: 8, seq_inputs: [D] }
+  params:
+    INIT_00: { width: 32 }
+    INIT_01: { width: 32 }
+    INIT_02: { width: 32 }
+    INIT_03: { width: 32 }
+    INIT_04: { width: 32 }
+    INIT_05: { width: 32 }
+    INIT_06: { width: 32 }
+    INIT_07: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM16X1D:
+  weight: 1
+  ports:
+    D:      { dir: input }
+    A0:     { dir: input }
+    A1:     { dir: input }
+    A2:     { dir: input }
+    A3:     { dir: input }
+    DPRA0:  { dir: input }
+    DPRA1:  { dir: input }
+    DPRA2:  { dir: input }
+    DPRA3:  { dir: input }
+    WE:     { dir: input, type: enable }
+    WCLK:   { dir: input, type: clk }
+    SPO:    { dir: output, seq_inputs: [D] }
+    DPO:    { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM16X1D_1:
+  weight: 1
+  ports:
+    D:      { dir: input }
+    A0:     { dir: input }
+    A1:     { dir: input }
+    A2:     { dir: input }
+    A3:     { dir: input }
+    DPRA0:  { dir: input }
+    DPRA1:  { dir: input }
+    DPRA2:  { dir: input }
+    DPRA3:  { dir: input }
+    WE:     { dir: input, type: enable }
+    WCLK:   { dir: input, type: clk }
+    SPO:    { dir: output, seq_inputs: [D] }
+    DPO:    { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 16 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X1D:
+  weight: 1
+  ports:
+    D:      { dir: input }
+    A0:     { dir: input }
+    A1:     { dir: input }
+    A2:     { dir: input }
+    A3:     { dir: input }
+    A4:     { dir: input }
+    DPRA0:  { dir: input }
+    DPRA1:  { dir: input }
+    DPRA2:  { dir: input }
+    DPRA3:  { dir: input }
+    DPRA4:  { dir: input }
+    WE:     { dir: input, type: enable }
+    WCLK:   { dir: input, type: clk }
+    SPO:    { dir: output, seq_inputs: [D] }
+    DPO:    { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X1D_1:
+  weight: 1
+  ports:
+    D:      { dir: input }
+    A0:     { dir: input }
+    A1:     { dir: input }
+    A2:     { dir: input }
+    A3:     { dir: input }
+    A4:     { dir: input }
+    DPRA0:  { dir: input }
+    DPRA1:  { dir: input }
+    DPRA2:  { dir: input }
+    DPRA3:  { dir: input }
+    DPRA4:  { dir: input }
+    WE:     { dir: input, type: enable }
+    WCLK:   { dir: input, type: clk }
+    SPO:    { dir: output, seq_inputs: [D] }
+    DPO:    { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 32 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64X1D:
+  weight: 1
+  ports:
+    D:      { dir: input }
+    A0:     { dir: input }
+    A1:     { dir: input }
+    A2:     { dir: input }
+    A3:     { dir: input }
+    A4:     { dir: input }
+    A5:     { dir: input }
+    DPRA0:  { dir: input }
+    DPRA1:  { dir: input }
+    DPRA2:  { dir: input }
+    DPRA3:  { dir: input }
+    DPRA4:  { dir: input }
+    DPRA5:  { dir: input }
+    WE:     { dir: input, type: enable }
+    WCLK:   { dir: input, type: clk }
+    SPO:    { dir: output, seq_inputs: [D] }
+    DPO:    { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64X1D_1:
+  weight: 1
+  ports:
+    D:      { dir: input }
+    A0:     { dir: input }
+    A1:     { dir: input }
+    A2:     { dir: input }
+    A3:     { dir: input }
+    A4:     { dir: input }
+    A5:     { dir: input }
+    DPRA0:  { dir: input }
+    DPRA1:  { dir: input }
+    DPRA2:  { dir: input }
+    DPRA3:  { dir: input }
+    DPRA4:  { dir: input }
+    DPRA5:  { dir: input }
+    WE:     { dir: input, type: enable }
+    WCLK:   { dir: input, type: clk }
+    SPO:    { dir: output, seq_inputs: [D] }
+    DPO:    { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM128X1D:
+  weight: 1
+  ports:
+    D:     { dir: input }
+    A:     { dir: input, width: 7 }
+    DPRA:  { dir: input, width: 7 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    SPO:   { dir: output, seq_inputs: [D] }
+    DPO:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 128 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM256X1D:
+  weight: 1
+  ports:
+    D:     { dir: input }
+    A:     { dir: input, width: 8 }
+    DPRA:  { dir: input, width: 8 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    SPO:   { dir: output, seq_inputs: [D] }
+    DPO:   { dir: output, seq_inputs: [D] }
+  params:
+    INIT: { width: 256 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32M:
+  weight: 1
+  ports:
+    DIA:   { dir: input,  width: 2 }
+    DIB:   { dir: input,  width: 2 }
+    DIC:   { dir: input,  width: 2 }
+    DID:   { dir: input,  width: 2 }
+    ADDRA: { dir: input,  width: 5 }
+    ADDRB: { dir: input,  width: 5 }
+    ADDRC: { dir: input,  width: 5 }
+    ADDRD: { dir: input,  width: 5 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    DOA:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID] }
+    DOB:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID] }
+    DOC:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID] }
+    DOD:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID] }
+  params:
+    INIT_A: { width: 64 }
+    INIT_B: { width: 64 }
+    INIT_C: { width: 64 }
+    INIT_D: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32M16:
+  weight: 1
+  ports:
+    DIA:   { dir: input,  width: 2 }
+    DIB:   { dir: input,  width: 2 }
+    DIC:   { dir: input,  width: 2 }
+    DID:   { dir: input,  width: 2 }
+    DIE:   { dir: input,  width: 2 }
+    DIF:   { dir: input,  width: 2 }
+    DIG:   { dir: input,  width: 2 }
+    DIH:   { dir: input,  width: 2 }
+    ADDRA: { dir: input,  width: 5 }
+    ADDRB: { dir: input,  width: 5 }
+    ADDRC: { dir: input,  width: 5 }
+    ADDRD: { dir: input,  width: 5 }
+    ADDRE: { dir: input,  width: 5 }
+    ADDRF: { dir: input,  width: 5 }
+    ADDRG: { dir: input,  width: 5 }
+    ADDRH: { dir: input,  width: 5 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    DOA:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOB:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOC:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOD:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOE:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOF:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOG:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOH:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+  params:
+    INIT_A: { width: 64 }
+    INIT_B: { width: 64 }
+    INIT_C: { width: 64 }
+    INIT_D: { width: 64 }
+    INIT_E: { width: 64 }
+    INIT_F: { width: 64 }
+    INIT_G: { width: 64 }
+    INIT_H: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64M:
+  weight: 1
+  ports:
+    DIA:   { dir: input }
+    DIB:   { dir: input }
+    DIC:   { dir: input }
+    DID:   { dir: input }
+    ADDRA: { dir: input, width: 6 }
+    ADDRB: { dir: input, width: 6 }
+    ADDRC: { dir: input, width: 6 }
+    ADDRD: { dir: input, width: 6 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    DOA:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID] }
+    DOB:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID] }
+    DOC:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID] }
+    DOD:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID] }
+  params:
+    INIT_A: { width: 64 }
+    INIT_B: { width: 64 }
+    INIT_C: { width: 64 }
+    INIT_D: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64M8:
+  weight: 1
+  ports:
+    DIA:   { dir: input }
+    DIB:   { dir: input }
+    DIC:   { dir: input }
+    DID:   { dir: input }
+    DIE:   { dir: input }
+    DIF:   { dir: input }
+    DIG:   { dir: input }
+    DIH:   { dir: input }
+    ADDRA: { dir: input, width: 6 }
+    ADDRB: { dir: input, width: 6 }
+    ADDRC: { dir: input, width: 6 }
+    ADDRD: { dir: input, width: 6 }
+    ADDRE: { dir: input, width: 6 }
+    ADDRF: { dir: input, width: 6 }
+    ADDRG: { dir: input, width: 6 }
+    ADDRH: { dir: input, width: 6 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    DOA:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOB:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOC:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOD:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOE:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOF:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOG:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOH:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+  params:
+    INIT_A: { width: 64 }
+    INIT_B: { width: 64 }
+    INIT_C: { width: 64 }
+    INIT_D: { width: 64 }
+    INIT_E: { width: 64 }
+    INIT_F: { width: 64 }
+    INIT_G: { width: 64 }
+    INIT_H: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM32X16DR8:
+  weight: 1
+  ports:
+    DIA:   { dir: input, width: 2 }
+    DIB:   { dir: input, width: 2 }
+    DIC:   { dir: input, width: 2 }
+    DID:   { dir: input, width: 2 }
+    DIE:   { dir: input, width: 2 }
+    DIF:   { dir: input, width: 2 }
+    DIG:   { dir: input, width: 2 }
+    DIH:   { dir: input, width: 2 }
+    ADDRA: { dir: input, width: 6 }
+    ADDRB: { dir: input, width: 6 }
+    ADDRC: { dir: input, width: 6 }
+    ADDRD: { dir: input, width: 6 }
+    ADDRE: { dir: input, width: 6 }
+    ADDRF: { dir: input, width: 6 }
+    ADDRG: { dir: input, width: 6 }
+    ADDRH: { dir: input, width: 5 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    DOA:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOB:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOC:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOD:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOE:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOF:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOG:   { dir: output, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+    DOH:   { dir: output, width: 2, seq_inputs: [DIA, DIB, DIC, DID, DIE, DIF, DIG, DIH] }
+  params:
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+RAM64X8SW:
+  weight: 1
+  ports:
+    D:     { dir: input }
+    A:     { dir: input, width: 6 }
+    WSEL:  { dir: input, width: 3 }
+    WE:    { dir: input, type: enable }
+    WCLK:  { dir: input, type: clk }
+    O:     { dir: output, width: 8, seq_inputs: [D] }
+  params:
+    INIT_A: { width: 64 }
+    INIT_B: { width: 64 }
+    INIT_C: { width: 64 }
+    INIT_D: { width: 64 }
+    INIT_E: { width: 64 }
+    INIT_F: { width: 64 }
+    INIT_G: { width: 64 }
+    INIT_H: { width: 64 }
+    IS_WCLK_INVERTED: { width: 1 }
+  resources: { lc: 1 }
+
+ROM16X1:
+  weight: 25
+  ports:
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 16 }
+  resources: { lc: 1 }
+
+ROM32X1:
+  weight: 25
+  ports:
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    A4: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 32 }
+  resources: { lc: 1 }
+
+ROM64X1:
+  weight: 25
+  ports:
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    A4: { dir: input }
+    A5: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 64 }
+  resources: { lc: 1 }
+
+ROM128X1:
+  weight: 25
+  ports:
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    A4: { dir: input }
+    A5: { dir: input }
+    A6: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 128 }
+  resources: { lc: 1 }
+
+ROM256X1:
+  weight: 25
+  ports:
+    A0: { dir: input }
+    A1: { dir: input }
+    A2: { dir: input }
+    A3: { dir: input }
+    A4: { dir: input }
+    A5: { dir: input }
+    A6: { dir: input }
+    A7: { dir: input }
+    O:  { dir: output }
+  params:
+    INIT: { width: 256 }
+  resources: { lc: 1 }
 
 SRL16:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [D] }
     A0: { dir: input }
@@ -545,7 +1292,7 @@ SRL16:
   resources: { lc: 1 }
   
 SRL16E:
-  weight: 1
+  weight: 100
   ports:
     Q:  { dir: output, seq_inputs: [CE, D] }
     A0: { dir: input }
@@ -593,7 +1340,7 @@ SRLC16E:
   resources: { lc: 1 }
 
 SRLC32E:
-  weight: 1
+  weight: 100
   ports:
     Q:   { dir: output, seq_inputs: [CE, D] }
     Q31: { dir: output, seq_inputs: [CE, D] }
@@ -626,4 +1373,242 @@ CFGLUT5:
   resources: { lc: 1 }
 
 
-# No DSP cells atm
+# DSP
+
+# Virtex 2, Virtex 2 Pro, Spartan 3.
+
+# MULT18X18:
+#   weight: 0
+#   ports:
+#     A:  { dir: input, width: 18 }
+#     B:  { dir: input, width: 18 }
+#     P:  { dir: output, width: 36 }
+#   resources: { dsp: 1 }
+
+
+# MULT18X18S:
+#   weight: 0
+#   ports:
+#     A:  { dir: input, width: 18 }
+#     B:  { dir: input, width: 18 }
+#     C:  { dir: input, type: clk }
+#     CE: { dir: input, type: enable }
+#     R:  { dir: input, type: reset }
+#     P:  { dir: output, width: 36, seq_inputs: [A, B] }
+#   resources: { dsp: 1 }
+
+# Spartan 3E, Spartan 3A.
+
+# MULT18X18SIO:
+#   weight: 0
+#   ports:
+#     A:      { dir: input,  width: 18 }
+#     B:      { dir: input,  width: 18 }
+#     BCIN:   { dir: input,  width: 18 }
+#     BCOUT:  { dir: output, width: 18 }
+#     P:      { dir: output, width: 36, seq_inputs: [A, B, BCIN] }
+#     CLK:    { dir: input,  type: clk }
+#     CEA:    { dir: input,  type: enable }
+#     CEB:    { dir: input,  type: enable }
+#     CEP:    { dir: input,  type: enable }
+#     RSTA:   { dir: input,  type: reset }
+#     RSTB:   { dir: input,  type: reset }
+#     RSTP:   { dir: input,  type: reset }
+#   params:
+#     AREG:     { width: 32 }
+#     BREG:     { width: 32 }
+#     PREG:     { width: 32 }
+#     B_INPUT:  { enum: ["DIRECT", "CASCADE"] }
+#   resources: { dsp: 1 }
+
+
+# Spartan 3A DSP.
+
+# DSP48A:
+#   weight: 0
+#   ports:
+#     A:         { dir: input,  width: 18 }
+#     B:         { dir: input,  width: 18 }
+#     C:         { dir: input,  width: 48 }
+#     D:         { dir: input,  width: 18 }
+#     PCIN:      { dir: input,  width: 48 }
+#     CARRYIN:   { dir: input }
+#     OPMODE:    { dir: input,  width: 8 }
+#     CLK:       { dir: input,  type: clk }
+#     CEA:       { dir: input,  type: enable }
+#     CEB:       { dir: input,  type: enable }
+#     CEC:       { dir: input,  type: enable }
+#     CED:       { dir: input,  type: enable }
+#     CEM:       { dir: input,  type: enable }
+#     CECARRYIN: { dir: input,  type: enable }
+#     CEOPMODE:  { dir: input,  type: enable }
+#     CEP:       { dir: input,  type: enable }
+#     RSTA:      { dir: input,  type: reset }
+#     RSTB:      { dir: input,  type: reset }
+#     RSTC:      { dir: input,  type: reset }
+#     RSTD:      { dir: input,  type: reset }
+#     RSTM:      { dir: input,  type: reset }
+#     RSTCARRYIN:{ dir: input,  type: reset }
+#     RSTOPMODE: { dir: input,  type: reset }
+#     RSTP:      { dir: input,  type: reset }
+#     P:         { dir: output, width: 48, seq_inputs: [A, B, C, D, PCIN, CARRYIN, OPMODE] }
+#     BCOUT:     { dir: output, width: 18 }
+#     PCOUT:     { dir: output, width: 48 }
+#     CARRYOUT:  { dir: output }
+#   params:
+#     A0REG:        { width: 32 }
+#     A1REG:        { width: 32 }
+#     B0REG:        { width: 32 }
+#     B1REG:        { width: 32 }
+#     CREG:         { width: 32 }
+#     DREG:         { width: 32 }
+#     MREG:         { width: 32 }
+#     CARRYINREG:   { width: 32 }
+#     OPMODEREG:    { width: 32 }
+#     PREG:         { width: 32 }
+#     CARRYINSEL:   { enum: ["CARRYIN", "PCIN", "PREG"] }
+#     RSTTYPE:      { enum: ["SYNC", "ASYNC"] }
+#   resources: { dsp: 1 }
+
+
+# Spartan 6.
+
+# DSP48A1:
+#   weight: 0
+#   ports:
+#     A:          { dir: input,  width: 18 }
+#     B:          { dir: input,  width: 18 }
+#     C:          { dir: input,  width: 48 }
+#     D:          { dir: input,  width: 18 }
+#     PCIN:       { dir: input,  width: 48 }
+#     CARRYIN:    { dir: input }
+#     OPMODE:     { dir: input,  width: 8 }
+#     CLK:        { dir: input,  type: clk }
+#     CEA:        { dir: input,  type: enable }
+#     CEB:        { dir: input,  type: enable }
+#     CEC:        { dir: input,  type: enable }
+#     CED:        { dir: input,  type: enable }
+#     CEM:        { dir: input,  type: enable }
+#     CECARRYIN:  { dir: input,  type: enable }
+#     CEOPMODE:   { dir: input,  type: enable }
+#     CEP:        { dir: input,  type: enable }
+#     RSTA:       { dir: input,  type: reset }
+#     RSTB:       { dir: input,  type: reset }
+#     RSTC:       { dir: input,  type: reset }
+#     RSTD:       { dir: input,  type: reset }
+#     RSTM:       { dir: input,  type: reset }
+#     RSTCARRYIN: { dir: input,  type: reset }
+#     RSTOPMODE:  { dir: input,  type: reset }
+#     RSTP:       { dir: input,  type: reset }
+#     M:          { dir: output, width: 36, seq_inputs: [A, B, C, D, OPMODE, CARRYIN, PCIN] }
+#     P:          { dir: output, width: 48, seq_inputs: [A, B, C, D, OPMODE, CARRYIN, PCIN] }
+#     BCOUT:      { dir: output, width: 18 }
+#     PCOUT:      { dir: output, width: 48 }
+#     CARRYOUT:   { dir: output }
+#     CARRYOUTF:  { dir: output }
+#   params:
+#     A0REG:        { width: 32 }
+#     A1REG:        { width: 32 }
+#     B0REG:        { width: 32 }
+#     B1REG:        { width: 32 }
+#     CREG:         { width: 32 }
+#     DREG:         { width: 32 }
+#     MREG:         { width: 32 }
+#     PREG:         { width: 32 }
+#     CARRYINREG:   { width: 32 }
+#     CARRYOUTREG:  { width: 32 }
+#     OPMODEREG:    { width: 32 }
+#     CARRYINSEL:   { enum: ["CARRYIN", "OPMODE5"] }
+#     RSTTYPE:      { enum: ["SYNC", "ASYNC"] }
+#   resources: { dsp: 1 }
+
+# Virtex 6, Series 7.
+
+# DSP48E1:
+#   weight: 100
+#   ports:
+#     A:        { dir: input,  width: 30, signed: true }
+#     ACIN:     { dir: input,  width: 30 }
+#     ALUMODE:  { dir: input,  width: 4 }
+#     B:        { dir: input,  width: 18, signed: true }
+#     BCIN:     { dir: input,  width: 18 }
+#     C:        { dir: input,  width: 48 }
+#     CARRYCASCIN:   { dir: input }
+#     CARRYIN:       { dir: input }
+#     CARRYINSEL:    { dir: input, width: 3 }
+#     CEA1:     { dir: input }
+#     CEA2:     { dir: input }
+#     CEAD:     { dir: input }
+#     CEALUMODE: { dir: input }
+#     CEB1:     { dir: input }
+#     CEB2:     { dir: input }
+#     CEC:      { dir: input }
+#     CECARRYIN: { dir: input }
+#     CECTRL:   { dir: input }
+#     CED:      { dir: input }
+#     CEINMODE: { dir: input }
+#     CEM:      { dir: input }
+#     CEP:      { dir: input }
+#     CLK:      { dir: input, type: clk }
+#     D:        { dir: input,  width: 25 }
+#     INMODE:   { dir: input,  width: 5 }
+#     MULTSIGNIN: { dir: input }
+#     OPMODE:   { dir: input,  width: 7 }
+#     PCIN:     { dir: input,  width: 48 }
+#     RSTA:     { dir: input }
+#     RSTALLCARRYIN: { dir: input }
+#     RSTALUMODE: { dir: input }
+#     RSTB:     { dir: input }
+#     RSTC:     { dir: input }
+#     RSTCTRL:  { dir: input }
+#     RSTD:     { dir: input }
+#     RSTINMODE: { dir: input }
+#     RSTM:     { dir: input }
+#     RSTP:     { dir: input }
+
+#     ACOUT:     { dir: output, width: 30 }
+#     BCOUT:     { dir: output, width: 18 }
+#     CARRYCASCOUT: { dir: output }
+#     CARRYOUT:  { dir: output, width: 4 }
+#     MULTSIGNOUT: { dir: output }
+#     OVERFLOW:  { dir: output }
+#     P:         { dir: output, width: 48, signed: true }
+#     PATTERNBDETECT: { dir: output }
+#     PATTERNDETECT: { dir: output }
+#     PCOUT:     { dir: output, width: 48 }
+#     UNDERFLOW: { dir: output }
+
+#   params:
+#     AREG:            { width: 2 }
+#     BREG:            { width: 2 }
+#     CREG:            { width: 1 }
+#     DREG:            { width: 1 }
+#     ACASCREG:        { width: 1 }
+#     BCASCREG:        { width: 1 }
+#     MREG:            { width: 1 }
+#     PREG:            { width: 1 }
+#     ADREG:           { width: 1 }
+#     ALUMODEREG:      { width: 1 }
+#     INMODEREG:       { width: 1 }
+#     CARRYINREG:      { width: 1 }
+#     CARRYINSELREG:   { width: 1 }
+#     OPMODEREG:       { width: 1 }
+#     USE_MULT:        { enum: ["NONE", "MULTIPLY", "DYNAMIC"] }
+#     USE_PATTERN_DETECT: { enum: ["NO_PATDET", "PATDET"] }
+#     SEL_MASK:        { enum: ["MASK", "C"] }
+#     SEL_PATTERN:     { enum: ["PATTERN", "C"] }
+#     A_INPUT:         { enum: ["DIRECT", "CASCADE"] }
+#     B_INPUT:         { enum: ["DIRECT", "CASCADE"] }
+#     USE_DPORT:       { enum: ["FALSE", "TRUE"] }
+#     USE_SIMD:        { enum: ["ONE48", "TWO24", "FOUR12"] }
+#     AUTORESET_PATDET: { enum: ["NO_RESET", "RESET_MATCH", "RESET_NOT_MATCH"] }
+#     MASK:            { width: 48 }
+#     PATTERN:         { width: 48 }
+#     IS_CLK_INVERTED: { width: 1 }
+#     IS_ALUMODE_INVERTED: { width: 4 }
+#     IS_CARRYIN_INVERTED: { width: 1 }
+#     IS_INMODE_INVERTED: { width: 5 }
+#     IS_OPMODE_INVERTED: { width: 7 }
+
+#   resources:
+#     dsp: 1
