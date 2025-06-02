@@ -23,7 +23,7 @@ source "$(dirname "$0")/../flows/fuzzing/61_induct.sh"
 WORKER_ID=${WORKER_ID:-0}
 SYNTH_TOP=${SYNTH_TOP:-synth}     # RTL   hierarchy root
 IMPL_TOP=${IMPL_TOP:-impl}  # gate-level hierarchy root
-FUZZED_TOP="fuzzed_netlist"       # basename (no .v)
+FUZZED_TOP="bug"       # basename (no .v)
 
 USE_SMTBMC=${USE_SMTBMC:-0}       # 1 → run BMC + induction
 
@@ -32,7 +32,7 @@ EPOCH_START=$(date +%s)
 STAMP=$(date -d @"$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUT_DIR=${OUT_DIR:-"tmp"}
+OUT_DIR="bug_dir"
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
@@ -97,11 +97,11 @@ info "│ SEED    : $SEED_HEX"
 info "└───────────────────────────────────────────────────────"
 
 # ───── fuzzed netlist generation ──────────────────────────────
-if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
-    RESULT_CATEGORY="fuznet_fail"
-    capture_failed_seed "fuznet failed"
-    exit 1
-fi
+# if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
+#     RESULT_CATEGORY="fuznet_fail"
+#     capture_failed_seed "fuznet failed"
+#     exit 1
+# fi
 
 # ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
@@ -164,60 +164,63 @@ case "$miter_ret:$verilator_ret" in
     *)     RESULT_CATEGORY="miter_unknown_verilator_unknown" ;   capture_failed_seed "miter unknown, Verilator unknown"   "rare"; exit 1 ;;
 esac
 
-# ───── Reduction of failed seeds ─────────────────────────────────
-
-reduction_out_dir="$OUT_DIR/reduction"
-reduction_log_dir="$reduction_out_dir/logs"
-
-mkdir -p "$reduction_out_dir"
-mkdir -p "$reduction_log_dir"
-
-if ! run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
-    capture_failed_seed "reduction failed" "rare"
-    RESULT_CATEGORY="reduction_fail"
-    exit 1
-fi
-
-# ───── Rerun Vivado on reduced netlist ─────────────────────────────
-if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
-    capture_failed_seed "reduced netlist Vivado failed" "rare"
-    RESULT_CATEGORY="reduced_vivado_fail"
-    exit 1
-fi
-
-# ───── structural equiv (Yosys) ───────────────────────────────
-if run_struct "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir"; then
-    RESULT_CATEGORY="structural_pass"
-    exit 0
-fi
-
-# ───── SAT miter (Yosys-sat) ──────────────────────────────────
-miter_ret=0
-run_miter "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || miter_ret=$?
-
-if (( miter_ret == 0 )); then
-    RESULT_CATEGORY="miter_pass"
-    exit 0
-elif (( miter_ret == 2 )); then
-    RESULT_CATEGORY="miter_unknown"
-    capture_failed_seed "miter unknown state"
-    exit 1
-fi
-
-# ───── Rerun Verilator simulation ──────────────────────────────────
-verilator_ret=0
-run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
-if (( verilator_ret == 2 )); then
-    capture_failed_seed "reduced netlist Verilator error" "rare"
-    RESULT_CATEGORY="reduced_verilator_error"
-    exit 1
-fi
-
-case "$miter_ret:$verilator_ret" in
-    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success"  "epic"      ;;
-    "1:0") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"   "rare"      ;;
-    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" "legendary" ;;
-    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  "rare"      ;;
-esac
-
+capture_failed_seed "Miter failed, Verilator failed" "epic"
 exit 0
+
+# # ───── Reduction of failed seeds ─────────────────────────────────
+
+# reduction_out_dir="$OUT_DIR/reduction"
+# reduction_log_dir="$reduction_out_dir/logs"
+
+# mkdir -p "$reduction_out_dir"
+# mkdir -p "$reduction_log_dir"
+
+# if ! run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
+#     capture_failed_seed "reduction failed" "rare"
+#     RESULT_CATEGORY="reduction_fail"
+#     exit 1
+# fi
+
+# # ───── Rerun Vivado on reduced netlist ─────────────────────────────
+# if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
+#     capture_failed_seed "reduced netlist Vivado failed" "rare"
+#     RESULT_CATEGORY="reduced_vivado_fail"
+#     exit 1
+# fi
+
+# # ───── structural equiv (Yosys) ───────────────────────────────
+# if run_struct "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir"; then
+#     RESULT_CATEGORY="structural_pass"
+#     exit 0
+# fi
+
+# # ───── SAT miter (Yosys-sat) ──────────────────────────────────
+# miter_ret=0
+# run_miter "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || miter_ret=$?
+
+# if (( miter_ret == 0 )); then
+#     RESULT_CATEGORY="miter_pass"
+#     exit 0
+# elif (( miter_ret == 2 )); then
+#     RESULT_CATEGORY="miter_unknown"
+#     capture_failed_seed "miter unknown state"
+#     exit 1
+# fi
+
+# # ───── Rerun Verilator simulation ──────────────────────────────────
+# verilator_ret=0
+# run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
+# if (( verilator_ret == 2 )); then
+#     capture_failed_seed "reduced netlist Verilator error" "rare"
+#     RESULT_CATEGORY="reduced_verilator_error"
+#     exit 1
+# fi
+
+# case "$miter_ret:$verilator_ret" in
+#     "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success"  "epic"      ;;
+#     "1:0") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"   "rare"      ;;
+#     "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" "legendary" ;;
+#     "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  "rare"      ;;
+# esac
+
+# exit 0

@@ -1,0 +1,16 @@
+read_verilog -lib hardware/xilinx/cell_sim.v
+
+read_verilog -DGLBL bug_dir/synth.v
+rename synth gold
+show -format dot -prefix bug_dir/synth
+
+read_verilog -DGLBL bug_dir/impl.v
+rename impl gate
+show -format dot -prefix bug_dir/impl
+
+equiv_make gold gate equiv_top;
+
+proc;
+
+equiv_struct             equiv_top
+equiv_status   -assert   equiv_top

@@ -327,8 +327,8 @@ void Netlist::remove_other_nets(const int& output_id) {
         Net* current = work.front();
         work.pop();
 
-        if (!current->driver.port) 
-            throw std::runtime_error("Net without driver found");
+        if (!current->driver.port)
+            continue;
 
         Module* module = current->driver.port->parent;
 
@@ -339,6 +339,10 @@ void Netlist::remove_other_nets(const int& output_id) {
                         work.push(input_port->nets[i]);
 
     }
+
+    for (const auto& net_ptr : nets)
+        if (net_ptr->name == "clk")
+            keep_nets.insert(net_ptr->id);
 
     modules.erase(
         std::remove_if(modules.begin(), modules.end(),

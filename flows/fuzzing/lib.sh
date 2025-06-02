@@ -8,7 +8,7 @@ pass()  { printf "\033[0;32m[PASS] \033[0m%s\n"  "$*"; }
 fail()  { printf "\033[0;31m[FAIL] \033[0m%s\n"  "$*"; }
 
 export TOP=${TOP:-top}
-export SEED=${SEED:-$(od -An -N4 -tu4 < /dev/urandom)}
+export SEED=$((0xf7f6729d))
 export PRIMS_V=${PRIMS_V:-hardware/xilinx/cell_sim.v}
 
 export VIVADO_BIN=${VIVADO_BIN:-/opt/Xilinx/Vivado/2024.2/bin/vivado}
