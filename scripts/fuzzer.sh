@@ -32,7 +32,7 @@ EPOCH_START=$(date +%s)
 STAMP=$(date -d @"$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
-OUT_DIR=${OUT_DIR:-"tmp-${STAMP}-${SEED_HEX}-w${WORKER_ID}"}
+OUT_DIR=${OUT_DIR:-"tmp"}
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
@@ -78,19 +78,11 @@ on_exit() {
            "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
            "$in_nets" "$output_nets" "$total_nets" \
            "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
-
-    rm -rf "$OUT_DIR"
 }
 
 capture_failed_seed() {
     local msg=$1
-    local dir=${2:-"common"}
-    local save="$PERMANENT_LOGS/$dir/${STAMP}-${SEED_HEX}-w${WORKER_ID}"
-    mkdir -p "$save"
-    cp -r "$OUT_DIR"/* "$save/" 2>/dev/null || true
-    printf '%-19s | SEED: %-10s | DIR: %-9s | %s\n' "$STAMP" "$SEED_HEX" "$dir" "$msg" \
-        >> "$PERMANENT_LOGS/failed_seeds.log"
-    echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
+    echo "SEED: $SEED_HEX | $msg"
 }
 
 trap 'on_exit' EXIT
@@ -190,6 +182,25 @@ fi
 if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
     capture_failed_seed "reduced netlist Vivado failed" "rare"
     RESULT_CATEGORY="reduced_vivado_fail"
+    exit 1
+fi
+
+# ───── structural equiv (Yosys) ───────────────────────────────
+if run_struct "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir"; then
+    RESULT_CATEGORY="structural_pass"
+    exit 0
+fi
+
+# ───── SAT miter (Yosys-sat) ──────────────────────────────────
+miter_ret=0
+run_miter "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || miter_ret=$?
+
+if (( miter_ret == 0 )); then
+    RESULT_CATEGORY="miter_pass"
+    exit 0
+elif (( miter_ret == 2 )); then
+    RESULT_CATEGORY="miter_unknown"
+    capture_failed_seed "miter unknown state"
     exit 1
 fi
 
