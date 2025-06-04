@@ -249,7 +249,7 @@ XORCY:
   resources: { lc: 1 }
 
 CARRY4:
-  weight: 0
+  weight: 100
   ports:
     CO: { dir: output, width: 4 }
     O: { dir: output, width: 4 }
@@ -1308,7 +1308,7 @@ SRL16E:
   resources: { lc: 1 }
 
 SRLC16:
-  weight: 0
+  weight: 100
   ports:
     Q:   { dir: output, seq_inputs: [D] }
     Q15: { dir: output, seq_inputs: [D] }
@@ -1323,7 +1323,7 @@ SRLC16:
   resources: { lc: 1 }
 
 SRLC16E:
-  weight: 0
+  weight: 100
   ports:
     Q:   { dir: output, seq_inputs: [CE, D] }
     Q15: { dir: output, seq_inputs: [CE, D] }
@@ -1354,7 +1354,7 @@ SRLC32E:
   resources: { lc: 1 }
 
 CFGLUT5:
-  weight: 0
+  weight: 100
   ports:
     CDO: { dir: output, seq_inputs: [CE, CDI] }
     O5:  { dir: output, seq_inputs: [CE, CDI] }

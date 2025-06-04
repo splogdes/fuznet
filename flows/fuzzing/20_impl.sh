@@ -26,6 +26,7 @@ run_impl() {
         return 1
     fi
     rm -f clockInfo.txt || true
+    rm -f tight_setup_hold_pins.txt || true
     info "Vivado implementation completed successfully"
     return 0
 }

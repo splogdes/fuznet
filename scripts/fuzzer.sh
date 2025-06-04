@@ -60,6 +60,11 @@ on_exit() {
     mkdir -p "$PERMANENT_LOGS"
 
     if [[ ! -f $results_csv ]]; then
+
+        vivado_stats_header=$(
+            scripts/vivado_log_parse.py "$LOG_DIR/vivado.log" --header-only
+        )
+
         cat <<EOF > "$results_csv"
 timestamp,worker,seed,category,runtime_micro,\
 gen_micro,impl_micro,struct_micro,miter_micro,\
@@ -70,8 +75,11 @@ input_nets_reduced,output_nets_reduced,total_nets_reduced,\
 comb_modules_reduced,seq_modules_reduced,total_modules_reduced,\
 max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,\
 seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,\
-AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs
+AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs,$vivado_stats_header
 EOF
+
+    
+
     fi
 
     declare -A STAGE_TIMES
@@ -131,10 +139,13 @@ EOF
             "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
             "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced"
 
-        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
             "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
             "$seq_mod_prob" "$seq_port_prob" \
             "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf"
+
+        scripts/vivado_log_parse.py "$LOG_DIR/vivado.log"
+
     } >> "$results_csv"
 
     rm -rf "$OUT_DIR"
