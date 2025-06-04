@@ -15,7 +15,7 @@ run_impl() {
                   -log "$log_dir/vivado.log"       \
                   -journal "$log_dir/vivado.jou"   \
                   -source "$VIVADO_TCL"            \
-                  -tclargs "$out" "$synth_top" "$impl_top" "$TOP" "$out/$fuzed_top.v" \
+                  -tclargs "$out" "$synth_top" "$impl_top" "$TOP" "$out/$fuzed_top.v" "$VIVADO_XDC" \
                   >/dev/null 2>&1 || vivado_ret=$?
     
     if (( vivado_ret > 128 )); then

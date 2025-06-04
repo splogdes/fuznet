@@ -44,9 +44,10 @@ PERMANENT_LOGS=${PERMANENT_LOGS:-logs}
 # ───── result bookkeeping & traps ─────────────────────────────────────────
 RESULT_CATEGORY=""
 
-cp $CELL_LIB $VIVADO_TCL $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
+cp $CELL_LIB $VIVADO_TCL $VIVADO_XDC $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
 export CELL_LIB="$OUT_DIR/$(basename "$CELL_LIB")"
 export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
+export VIVADO_XDC="$OUT_DIR/$(basename "$VIVADO_XDC")"
 export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
 
 on_exit() {

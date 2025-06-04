@@ -5,9 +5,11 @@ set synth_top [lindex $argv 1]
 set impl_top  [lindex $argv 2]
 set fuzz_top [lindex $argv 3]
 set netlist [lindex $argv 4]
+set constraints [lindex $argv 5]
 
 # Load Verilog netlist
 read_verilog $netlist
+read_xdc $constraints
 
 # Open (link) the design — must be after reading Verilog
 link_design -part $part -top $fuzz_top
