@@ -62,7 +62,7 @@ on_exit() {
     if [[ ! -f $results_csv ]]; then
 
         vivado_stats_header=$(
-            scripts/vivado_log_parse.py "$LOG_DIR/vivado.log" --header-only
+            ./scripts/vivado_log_parse.py "$LOG_DIR/vivado.log" --header-only
         )
 
         cat <<EOF > "$results_csv"
@@ -77,8 +77,6 @@ max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,\
 seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,\
 AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs,$vivado_stats_header
 EOF
-
-    
 
     fi
 
@@ -144,7 +142,7 @@ EOF
             "$seq_mod_prob" "$seq_port_prob" \
             "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf"
 
-        scripts/vivado_log_parse.py "$LOG_DIR/vivado.log"
+        ./scripts/vivado_log_parse.py "$LOG_DIR/vivado.log"
 
     } >> "$results_csv"
 
@@ -178,6 +176,7 @@ capture_failed_seed() {
     fail "$msg"
 }
 
+trap 'exit 0' SIGINT SIGTERM
 trap 'on_exit' EXIT
 trap 'fail "error in $BASH_COMMAND"; RESULT_CATEGORY=driver_error; capture_failed_seed "$BASH_COMMAND"; exit 1' ERR
 
