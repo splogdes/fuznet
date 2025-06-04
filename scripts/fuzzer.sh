@@ -119,32 +119,33 @@ EOF
         )
     fi
 
-    {
-        printf "%s,%s,%s,%s,%s," \
-            "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime"
 
-        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
-            "${STAGE_TIMES[run_gen]:-NA}" "${STAGE_TIMES[run_impl]:-NA}" \
-            "${STAGE_TIMES[run_struct]:-NA}" "${STAGE_TIMES[run_miter]:-NA}" \
-            "${STAGE_TIMES[run_verilator]:-NA}" "${STAGE_TIMES[run_z3_smt]:-NA}" \
-            "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
-            "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}"
+    result_line=$(printf "%s,%s,%s,%s,%s," \
+        "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime")
 
-        printf "%s,%s,%s,%s,%s,%s," \
-            "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods"
+    result_line+=$(printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
+        "${STAGE_TIMES[run_gen]:-NA}" "${STAGE_TIMES[run_impl]:-NA}" \
+        "${STAGE_TIMES[run_struct]:-NA}" "${STAGE_TIMES[run_miter]:-NA}" \
+        "${STAGE_TIMES[run_verilator]:-NA}" "${STAGE_TIMES[run_z3_smt]:-NA}" \
+        "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
+        "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}")
 
-        printf "%s,%s,%s,%s,%s,%s," \
-            "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
-            "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced"
+    result_line+=$(printf "%s,%s,%s,%s,%s,%s," \
+        "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods")
 
-        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
-            "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
-            "$seq_mod_prob" "$seq_port_prob" \
-            "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf"
+    result_line+=$(printf "%s,%s,%s,%s,%s,%s," \
+        "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
+        "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced")
 
-        ./scripts/vivado_log_parse.py "$LOG_DIR/vivado.log"
+    result_line+=$(printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
+        "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
+        "$seq_mod_prob" "$seq_port_prob" \
+        "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf")
 
-    } >> "$results_csv"
+    result_line+=$(./scripts/vivado_log_parse.py "$LOG_DIR/vivado.log")
+
+    echo "$result_line" >> "$results_csv"
+
 
     rm -rf "$OUT_DIR"
 }
