@@ -60,7 +60,11 @@ on_exit() {
     local results_csv="$PERMANENT_LOGS/results.csv"
 
     if [[ ! -f $results_csv ]]; then
-        printf "timestamp,worker,seed,category,runtime_micro,input_nets,output_nets,total_nets," > "$results_csv"
+        printf "timestamp,worker,seed,category,runtime_micro," > "$results_csv"
+        printf "gen_micro,impl_micro,struct_micro,miter_micro," >> "$results_csv"
+        printf "verilator_micro,z3_bmc_micro,z3_induct_micro," >> "$results_csv"
+        printf "reduction_micro,impl_reduced_micro," >> "$results_csv"
+        printf "verilator_reduced,input_nets,output_nets,total_nets," >> "$results_csv"
         printf "comb_modules,seq_modules,total_modules,input_nets_reduced,output_nets_reduced," >> "$results_csv"
         printf "total_nets_reduced,comb_modules_reduced,seq_modules_reduced,total_modules_reduced," >> "$results_csv"
         printf "max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda," >> "$results_csv"
@@ -106,8 +110,26 @@ on_exit() {
         )
     fi
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
+    declare -A STAGE_TIMES
+    if [[ -f "$LOG_DIR/stage_runtimes.csv" ]]; then
+        while IFS=, read -r stage time; do
+            STAGE_TIMES["$stage"]=$time
+        done < "$LOG_DIR/stage_runtimes.csv"
+    fi
+
+    printf "%s,%s,%s,%s,%s," \
         "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
+        >> "$results_csv"
+
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
+        "${STAGE_TIMES[run_gen]:-NA}" "${STAGE_TIMES[run_impl]:-NA}" \
+        "${STAGE_TIMES[run_struct]:-NA}" "${STAGE_TIMES[run_miter]:-NA}" \
+        "${STAGE_TIMES[run_verilator]:-NA}" "${STAGE_TIMES[run_z3_smt]:-NA}" \
+        "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
+        "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}" \
+        >> "$results_csv"
+
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
         "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods" \
         "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
         "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced" \
@@ -122,6 +144,21 @@ on_exit() {
     rm -rf "$OUT_DIR"
 }
 
+time_stage() {
+    if [[ ! -v reduction_out_dir ]]; then
+        local stage_name=$(basename "$1")
+    else
+        local stage_name=$(basename "$1")"_reduced"
+    fi
+    local start_time=$(date +%s%6N)
+    exit_code=0
+    "$@" || exit_code=$?
+    local end_time=$(date +%s%6N)
+    local duration=$(( end_time - start_time ))
+    echo "$stage_name,$duration" >> "$LOG_DIR/stage_runtimes.csv"
+    return $exit_code
+}
+
 capture_failed_seed() {
     local msg=$1
     local dir=${2:-"common"}
@@ -131,6 +168,7 @@ capture_failed_seed() {
     printf '%-19s | SEED: %-10s | DIR: %-9s | %s\n' "$STAMP" "$SEED_HEX" "$dir" "$msg" \
         >> "$PERMANENT_LOGS/failed_seeds.log"
     echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
+    fail "$msg"
 }
 
 trap 'on_exit' EXIT
@@ -144,15 +182,14 @@ info "│ SEED    : $SEED_HEX"
 info "└───────────────────────────────────────────────────────"
 
 # ───── fuzzed netlist generation ──────────────────────────────
-if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
+if ! time_stage run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
     RESULT_CATEGORY="fuznet_fail"
     capture_failed_seed "fuznet failed"
     exit 1
 fi
-
 # ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
-run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
+time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
 case $impl_ret in
     0) ;;
     1) RESULT_CATEGORY="vivado_fail" ; exit 1 ;;
@@ -160,14 +197,14 @@ case $impl_ret in
 esac
 
 # ───── structural equiv (Yosys) ───────────────────────────────
-if run_struct "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR"; then
+if time_stage run_struct "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR"; then
     RESULT_CATEGORY="structural_pass"
     exit 0
 fi
 
 # ───── SAT miter (Yosys-sat) ──────────────────────────────────
 miter_ret=0
-run_miter "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || miter_ret=$?
+time_stage run_miter "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || miter_ret=$?
 
 if (( miter_ret == 0 )); then
     RESULT_CATEGORY="miter_pass"
@@ -180,19 +217,19 @@ fi
 
 # ───── Verilator simulation fallback ──────────────────────────
 verilator_ret=0
-run_verilator "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
+time_stage run_verilator "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
 
 # ───── optional SMTBMC (Z3) checks ────────────────────────────
 if (( USE_SMTBMC )); then
     smt="$OUT_DIR/eq_top.smt2"
-    if run_z3_smt "$OUT_DIR" "$smt" "$LOG_DIR"; then
+    if time_stage run_z3_smt "$OUT_DIR" "$smt" "$LOG_DIR"; then
         RESULT_CATEGORY="bmc_pass"
         exit 0
     else
         RESULT_CATEGORY="bmc_fail"
     fi
 
-    if run_z3_induct "$OUT_DIR" "$smt" "$LOG_DIR"; then
+    if time_stage run_z3_induct "$OUT_DIR" "$smt" "$LOG_DIR"; then
         RESULT_CATEGORY="induct_pass"
         exit 0
     else
@@ -219,14 +256,14 @@ reduction_log_dir="$reduction_out_dir/logs"
 mkdir -p "$reduction_out_dir"
 mkdir -p "$reduction_log_dir"
 
-if ! run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
+if ! time_stage run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
     capture_failed_seed "reduction failed" "rare"
     RESULT_CATEGORY="reduction_fail"
     exit 1
 fi
 
 # ───── Rerun Vivado on reduced netlist ─────────────────────────────
-if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
+if ! time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
     capture_failed_seed "reduced netlist Vivado failed" "rare"
     RESULT_CATEGORY="reduced_vivado_fail"
     exit 1
@@ -234,7 +271,7 @@ fi
 
 # ───── Rerun Verilator simulation ──────────────────────────────────
 verilator_ret=0
-run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
+time_stage run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
 if (( verilator_ret == 2 )); then
     capture_failed_seed "reduced netlist Verilator error" "rare"
     RESULT_CATEGORY="reduced_verilator_error"
