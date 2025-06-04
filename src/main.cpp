@@ -27,12 +27,12 @@ int main(int argc, char** argv) {
         app.add_option("-s,--seed",    seed_str,     "Random seed");
         app.add_flag  ("-v,--verbose", verbose,      "Print chosen options");
         app.add_flag  ("--version",    show_ver,     "Show version");
+        app.add_flag  ("-j,--json",    json_stats,   "Write JSON stats");
 
         app.fallthrough();
 
         auto generate_mode = app.add_subcommand("generate", "Generate a new netlist");
         generate_mode->add_flag  ("-a,--animate", animate,      "Write DOT after each step");
-        generate_mode->add_flag  ("-j,--json",    json_stats,   "Write JSON stats");
         generate_mode->add_option("-c,--config",  settings_cfg, "Settings TOML");
         generate_mode->add_option("-o,--output",  out_prefix,   "Output prefix");
         
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
         CLI11_PARSE(app, argc, argv);
 
         if (show_ver) {
-            std::cout << "Fuznet 0.4.0\n";
+            std::cout << "Fuznet 0.5.3\n";
             return 0;
         }
 
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
         }
 
         if (*reducer_mode) {
-            fuznet::Reducer reducer(lib_cfg, json_netlist, seed, verbose);
+            fuznet::Reducer reducer(lib_cfg, json_netlist, seed, json_stats, verbose);
             reducer.keep_only_net(keep_only);
             reducer.write_outputs(out_prefix);
         }
