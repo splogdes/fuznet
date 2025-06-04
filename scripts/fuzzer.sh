@@ -28,8 +28,11 @@ FUZZED_TOP="fuzzed_netlist"       # basename (no .v)
 USE_SMTBMC=${USE_SMTBMC:-0}       # 1 → run BMC + induction
 
 # ───── directory scaffolding ──────────────────────────────────────────────
-EPOCH_START=$(date +%s)
-STAMP=$(date -d @"$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
+
+EPOCH_START=$(date +%s%6N)
+LAST_TIME=$(date +%s%6N)
+
+STAMP=$(date -d @"$( echo $EPOCH_START | cut -b1-10 )" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
 OUT_DIR=${OUT_DIR:-"tmp-${STAMP}-${SEED_HEX}-w${WORKER_ID}"}
@@ -47,37 +50,54 @@ export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
 export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
 
 on_exit() {
-    local end_time=$(date +%s)
+    local end_time=$(date +%s%6N)
     local runtime=$(( end_time - EPOCH_START ))
-    local human_date=$(date -d "@$EPOCH_START" '+%Y-%m-%d %H:%M:%S')
+    local human_date=$(date -d @"$( echo $EPOCH_START | cut -b1-10 )" '+%Y-%m-%d %H:%M:%S')
 
     local stats_json="$OUT_DIR/${FUZZED_TOP}_stats.json"
 
     mkdir -p "$PERMANENT_LOGS"
     local results_csv="$PERMANENT_LOGS/results.csv"
     if [[ ! -f $results_csv ]]; then
-        echo "timestamp,worker,seed,category,runtime,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules" \
-             > "$results_csv"
+        echo "timestamp,worker,seed,category,runtime_micro,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules,max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs" \
+            > "$results_csv"
     fi
 
-    local in_nets= output_nets= total_nets=
-    local comb_mods= seq_mods= total_mods=
+    local in_nets=NA output_nets=NA total_nets=NA
+    local comb_mods=NA seq_mods=NA total_mods=NA
+
+    local max_iter=NA stop_iter_lambda=NA start_input_lambda=NA start_undriven_lambda=NA
+    local seq_mod_prob=NA seq_port_prob=NA
+    local cmd_addmod=NA cmd_extnet=NA cmd_undrive=NA cmd_drive=NA cmd_drives=NA cmd_buf=NA
+
 
     if [[ -f $stats_json ]]; then
         read -r in_nets output_nets total_nets \
                         comb_mods seq_mods total_mods < <(
-        jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
-            "$stats_json"
+            jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
+                "$stats_json"
         )
-    else
-        in_nets=NA output_nets=NA total_nets=NA
-        comb_mods=NA seq_mods=NA total_mods=NA
+
+        read -r max_iter stop_iter_lambda start_input_lambda \
+                        start_undriven_lambda seq_mod_prob seq_port_prob < <(
+            jq -r '.settings | [.max_iter, .stop_iter_lambda, .start_input_lambda, .start_undriven_lambda, .seq_mod_prob, .seq_port_prob] | @tsv' \
+                "$stats_json"
+        )
+
+        read -r cmd_addmod cmd_extnet cmd_undrive cmd_drive cmd_drives cmd_buf < <(
+            jq -r '[.commands[] | .weight] | @tsv' \
+                "$stats_json"
+        )
     fi
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
-           "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
-           "$in_nets" "$output_nets" "$total_nets" \
-           "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
+
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+        "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
+        "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods" \
+        "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
+        "$seq_mod_prob" "$seq_port_prob" \
+        "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf" \
+        >> "$results_csv" 
 
     rm -rf "$OUT_DIR"
 }
@@ -95,7 +115,6 @@ capture_failed_seed() {
 
 trap 'on_exit' EXIT
 trap 'fail "error in $BASH_COMMAND"; RESULT_CATEGORY=driver_error; capture_failed_seed "$BASH_COMMAND"; exit 1' ERR
-trap 'kill -- -$$' INT TERM
 
 info "┌────────────────────── run_equiv ──────────────────────"
 info "│ OUT_DIR : $OUT_DIR"
