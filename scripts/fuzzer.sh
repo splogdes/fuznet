@@ -275,7 +275,7 @@ fi
 
 case "$miter_ret:$verilator_ret" in
     "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success"  "epic"      ;;
-    "1:0") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"   "rare"      ;;
+    "1:0") RESULT_CATEGORY="miter_fail_verilator_pass_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"   "rare"      ;;
     "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" "legendary" ;;
     "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  "rare"      ;;
 esac
