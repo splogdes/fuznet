@@ -58,9 +58,14 @@ on_exit() {
 
     mkdir -p "$PERMANENT_LOGS"
     local results_csv="$PERMANENT_LOGS/results.csv"
+
     if [[ ! -f $results_csv ]]; then
-        echo "timestamp,worker,seed,category,runtime_micro,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules,max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs" \
-            > "$results_csv"
+        printf "timestamp,worker,seed,category,runtime_micro,input_nets,output_nets,total_nets," > "$results_csv"
+        printf "comb_modules,seq_modules,total_modules,input_nets_reduced,output_nets_reduced," >> "$results_csv"
+        printf "total_nets_reduced,comb_modules_reduced,seq_modules_reduced,total_modules_reduced," >> "$results_csv"
+        printf "max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda," >> "$results_csv"
+        printf "seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet," >> "$results_csv"
+        printf "AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs\n" >> "$results_csv"
     fi
 
     local in_nets=NA output_nets=NA total_nets=NA
@@ -90,10 +95,25 @@ on_exit() {
         )
     fi
 
+    local in_nets_reduced=NA output_nets_reduced=NA total_nets_reduced=NA
+    local comb_mods_reduced=NA seq_mods_reduced=NA total_mods_reduced=NA
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+    if [[ -f "${reduction_out_dir:-none}/${FUZZED_TOP}_stats.json" ]]; then
+        read -r in_nets_reduced output_nets_reduced total_nets_reduced \
+                        comb_mods_reduced seq_mods_reduced total_mods_reduced < <(
+            jq -r '[.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
+                "$reduction_out_dir/${FUZZED_TOP}_stats.json"
+        )
+    fi
+
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
         "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
         "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods" \
+        "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
+        "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced" \
+        >> "$results_csv"
+
+    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
         "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
         "$seq_mod_prob" "$seq_port_prob" \
         "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf" \

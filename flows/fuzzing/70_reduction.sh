@@ -21,6 +21,7 @@ run_reduction() {
                       -i "$fuzzed_netlist_json"    \
                       -r "$wire_to_keep"           \
                       -o "$out/$fuzzed_top"        \
+                      -j                           \
                       -v                           \
                       > "$log_dir/fuznet_reduction.log" 2>&1;
     then
