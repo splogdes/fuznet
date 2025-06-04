@@ -103,10 +103,13 @@ pattern = re.compile(r"(-{40,}(\n.*){1,14}\n-{40,})")
 
 matches = list(pattern.finditer(log))
 
-for k, match in enumerate(matches):
+k = 0
+for match in matches:
     content = match.group(0)
     lines = [l.strip() for l in content.splitlines() if l.strip().startswith("|")]
-    if not lines: continue
+    
+    if len(lines) != len(phase_fields[k]["fields"]) + 1:
+        k += 1 
 
     csv_name = phase_fields[k]["csv_prefix"]
     rows = lines[1:]
@@ -119,6 +122,8 @@ for k, match in enumerate(matches):
 
         for j, header in enumerate(phase_fields[k]["headers"]):
             summary[f"{csv_row_name}.{header}"] = fields[j + 1]
+        
+    k += 1
         
 
 print(",".join(summary.values()))
