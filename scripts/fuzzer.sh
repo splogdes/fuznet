@@ -32,7 +32,7 @@ USE_SMTBMC=${USE_SMTBMC:-0}       # 1 → run BMC + induction
 EPOCH_START=$(date +%s%6N)
 LAST_TIME=$(date +%s%6N)
 
-STAMP=$(date -d @"$( echo $EPOCH_START | cut -b1-10 )" +%Y-%m-%d_%H-%M-%S)
+STAMP=$(date -d @"${EPOCH_START:0:10}" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
 OUT_DIR=${OUT_DIR:-"tmp-${STAMP}-${SEED_HEX}-w${WORKER_ID}"}
@@ -52,62 +52,25 @@ export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
 on_exit() {
     local end_time=$(date +%s%6N)
     local runtime=$(( end_time - EPOCH_START ))
-    local human_date=$(date -d @"$( echo $EPOCH_START | cut -b1-10 )" '+%Y-%m-%d %H:%M:%S')
-
+    local human_date=$(date -d @"${EPOCH_START:0:10}" '+%Y-%m-%d %H:%M:%S')
     local stats_json="$OUT_DIR/${FUZZED_TOP}_stats.json"
-
-    mkdir -p "$PERMANENT_LOGS"
     local results_csv="$PERMANENT_LOGS/results.csv"
 
+    mkdir -p "$PERMANENT_LOGS"
+
     if [[ ! -f $results_csv ]]; then
-        printf "timestamp,worker,seed,category,runtime_micro," > "$results_csv"
-        printf "gen_micro,impl_micro,struct_micro,miter_micro," >> "$results_csv"
-        printf "verilator_micro,z3_bmc_micro,z3_induct_micro," >> "$results_csv"
-        printf "reduction_micro,impl_reduced_micro," >> "$results_csv"
-        printf "verilator_reduced,input_nets,output_nets,total_nets," >> "$results_csv"
-        printf "comb_modules,seq_modules,total_modules,input_nets_reduced,output_nets_reduced," >> "$results_csv"
-        printf "total_nets_reduced,comb_modules_reduced,seq_modules_reduced,total_modules_reduced," >> "$results_csv"
-        printf "max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda," >> "$results_csv"
-        printf "seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet," >> "$results_csv"
-        printf "AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs\n" >> "$results_csv"
-    fi
-
-    local in_nets=NA output_nets=NA total_nets=NA
-    local comb_mods=NA seq_mods=NA total_mods=NA
-
-    local max_iter=NA stop_iter_lambda=NA start_input_lambda=NA start_undriven_lambda=NA
-    local seq_mod_prob=NA seq_port_prob=NA
-    local cmd_addmod=NA cmd_extnet=NA cmd_undrive=NA cmd_drive=NA cmd_drives=NA cmd_buf=NA
-
-
-    if [[ -f $stats_json ]]; then
-        read -r in_nets output_nets total_nets \
-                        comb_mods seq_mods total_mods < <(
-            jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
-                "$stats_json"
-        )
-
-        read -r max_iter stop_iter_lambda start_input_lambda \
-                        start_undriven_lambda seq_mod_prob seq_port_prob < <(
-            jq -r '.settings | [.max_iter, .stop_iter_lambda, .start_input_lambda, .start_undriven_lambda, .seq_mod_prob, .seq_port_prob] | @tsv' \
-                "$stats_json"
-        )
-
-        read -r cmd_addmod cmd_extnet cmd_undrive cmd_drive cmd_drives cmd_buf < <(
-            jq -r '[.commands[] | .weight] | @tsv' \
-                "$stats_json"
-        )
-    fi
-
-    local in_nets_reduced=NA output_nets_reduced=NA total_nets_reduced=NA
-    local comb_mods_reduced=NA seq_mods_reduced=NA total_mods_reduced=NA
-
-    if [[ -f "${reduction_out_dir:-none}/${FUZZED_TOP}_stats.json" ]]; then
-        read -r in_nets_reduced output_nets_reduced total_nets_reduced \
-                        comb_mods_reduced seq_mods_reduced total_mods_reduced < <(
-            jq -r '[.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
-                "$reduction_out_dir/${FUZZED_TOP}_stats.json"
-        )
+        cat <<EOF > "$results_csv"
+timestamp,worker,seed,category,runtime_micro,\
+gen_micro,impl_micro,struct_micro,miter_micro,\
+verilator_micro,z3_bmc_micro,z3_induct_micro,\
+reduction_micro,impl_reduced_micro,verilator_reduced,\
+input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules,\
+input_nets_reduced,output_nets_reduced,total_nets_reduced,\
+comb_modules_reduced,seq_modules_reduced,total_modules_reduced,\
+max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,\
+seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,\
+AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs
+EOF
     fi
 
     declare -A STAGE_TIMES
@@ -117,31 +80,63 @@ on_exit() {
         done < "$LOG_DIR/stage_runtimes.csv"
     fi
 
-    printf "%s,%s,%s,%s,%s," \
-        "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
-        >> "$results_csv"
+    local in_nets=NA output_nets=NA total_nets=NA
+    local comb_mods=NA seq_mods=NA total_mods=NA
+    local max_iter=NA stop_iter_lambda=NA start_input_lambda=NA start_undriven_lambda=NA
+    local seq_mod_prob=NA seq_port_prob=NA
+    local cmd_addmod=NA cmd_extnet=NA cmd_undrive=NA cmd_drive=NA cmd_drives=NA cmd_buf=NA
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
-        "${STAGE_TIMES[run_gen]:-NA}" "${STAGE_TIMES[run_impl]:-NA}" \
-        "${STAGE_TIMES[run_struct]:-NA}" "${STAGE_TIMES[run_miter]:-NA}" \
-        "${STAGE_TIMES[run_verilator]:-NA}" "${STAGE_TIMES[run_z3_smt]:-NA}" \
-        "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
-        "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}" \
-        >> "$results_csv"
+    if [[ -f $stats_json ]]; then
+        read -r in_nets output_nets total_nets \
+                comb_mods seq_mods total_mods < <(
+            jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' "$stats_json"
+        )
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
-        "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods" \
-        "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
-        "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced" \
-        >> "$results_csv"
+        read -r max_iter stop_iter_lambda start_input_lambda start_undriven_lambda seq_mod_prob seq_port_prob < <(
+            jq -r '.settings | [.max_iter, .stop_iter_lambda, .start_input_lambda, .start_undriven_lambda, .seq_mod_prob, .seq_port_prob] | @tsv' "$stats_json"
+        )
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
-        "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
-        "$seq_mod_prob" "$seq_port_prob" \
-        "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf" \
-        >> "$results_csv" 
+        read -r cmd_addmod cmd_extnet cmd_undrive cmd_drive cmd_drives cmd_buf < <(
+            jq -r '[.commands[] | .weight] | @tsv' "$stats_json"
+        )
+    fi
 
-    rm -rf "$OUT_DIR"
+    local in_nets_reduced=NA output_nets_reduced=NA total_nets_reduced=NA
+    local comb_mods_reduced=NA seq_mods_reduced=NA total_mods_reduced=NA
+
+    if [[ -f "${reduction_out_dir:-none}/${FUZZED_TOP}_stats.json" ]]; then
+        read -r in_nets_reduced output_nets_reduced total_nets_reduced \
+                comb_mods_reduced seq_mods_reduced total_mods_reduced < <(
+            jq -r '[.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
+                "$reduction_out_dir/${FUZZED_TOP}_stats.json"
+        )
+    fi
+
+    {
+        printf "%s,%s,%s,%s,%s," \
+            "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime"
+
+        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
+            "${STAGE_TIMES[run_gen]:-NA}" "${STAGE_TIMES[run_impl]:-NA}" \
+            "${STAGE_TIMES[run_struct]:-NA}" "${STAGE_TIMES[run_miter]:-NA}" \
+            "${STAGE_TIMES[run_verilator]:-NA}" "${STAGE_TIMES[run_z3_smt]:-NA}" \
+            "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
+            "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}"
+
+        printf "%s,%s,%s,%s,%s,%s," \
+            "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods"
+
+        printf "%s,%s,%s,%s,%s,%s," \
+            "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
+            "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced"
+
+        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+            "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
+            "$seq_mod_prob" "$seq_port_prob" \
+            "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf"
+    } >> "$results_csv"
+
+    # rm -rf "$OUT_DIR"
 }
 
 time_stage() {
