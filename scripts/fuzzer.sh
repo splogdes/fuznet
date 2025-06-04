@@ -28,8 +28,11 @@ FUZZED_TOP="fuzzed_netlist"       # basename (no .v)
 USE_SMTBMC=${USE_SMTBMC:-0}       # 1 → run BMC + induction
 
 # ───── directory scaffolding ──────────────────────────────────────────────
-EPOCH_START=$(date +%s)
-STAMP=$(date -d @"$EPOCH_START" +%Y-%m-%d_%H-%M-%S)
+
+EPOCH_START=$(date +%s%6N)
+LAST_TIME=$(date +%s%6N)
+
+STAMP=$(date -d @"${EPOCH_START:0:10}" +%Y-%m-%d_%H-%M-%S)
 SEED_HEX=$(printf "0x%08x" "$SEED")
 
 OUT_DIR=${OUT_DIR:-"tmp-${STAMP}-${SEED_HEX}-w${WORKER_ID}"}
@@ -47,39 +50,108 @@ export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
 export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
 
 on_exit() {
-    local end_time=$(date +%s)
+    local end_time=$(date +%s%6N)
     local runtime=$(( end_time - EPOCH_START ))
-    local human_date=$(date -d "@$EPOCH_START" '+%Y-%m-%d %H:%M:%S')
-
+    local human_date=$(date -d @"${EPOCH_START:0:10}" '+%Y-%m-%d %H:%M:%S')
     local stats_json="$OUT_DIR/${FUZZED_TOP}_stats.json"
+    local results_csv="$PERMANENT_LOGS/results.csv"
 
     mkdir -p "$PERMANENT_LOGS"
-    local results_csv="$PERMANENT_LOGS/results.csv"
+
     if [[ ! -f $results_csv ]]; then
-        echo "timestamp,worker,seed,category,runtime,input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules" \
-             > "$results_csv"
+        cat <<EOF > "$results_csv"
+timestamp,worker,seed,category,runtime_micro,\
+gen_micro,impl_micro,struct_micro,miter_micro,\
+verilator_micro,z3_bmc_micro,z3_induct_micro,\
+reduction_micro,impl_reduced_micro,verilator_reduced,\
+input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules,\
+input_nets_reduced,output_nets_reduced,total_nets_reduced,\
+comb_modules_reduced,seq_modules_reduced,total_modules_reduced,\
+max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,\
+seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,\
+AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs
+EOF
     fi
 
-    local in_nets= output_nets= total_nets=
-    local comb_mods= seq_mods= total_mods=
+    declare -A STAGE_TIMES
+    if [[ -f "$LOG_DIR/stage_runtimes.csv" ]]; then
+        while IFS=, read -r stage time; do
+            STAGE_TIMES["$stage"]=$time
+        done < "$LOG_DIR/stage_runtimes.csv"
+    fi
+
+    local in_nets=NA output_nets=NA total_nets=NA
+    local comb_mods=NA seq_mods=NA total_mods=NA
+    local max_iter=NA stop_iter_lambda=NA start_input_lambda=NA start_undriven_lambda=NA
+    local seq_mod_prob=NA seq_port_prob=NA
+    local cmd_addmod=NA cmd_extnet=NA cmd_undrive=NA cmd_drive=NA cmd_drives=NA cmd_buf=NA
 
     if [[ -f $stats_json ]]; then
         read -r in_nets output_nets total_nets \
-                        comb_mods seq_mods total_mods < <(
-        jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
-            "$stats_json"
+                comb_mods seq_mods total_mods < <(
+            jq -r '.netlist_stats | [.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' "$stats_json"
         )
-    else
-        in_nets=NA output_nets=NA total_nets=NA
-        comb_mods=NA seq_mods=NA total_mods=NA
+
+        read -r max_iter stop_iter_lambda start_input_lambda start_undriven_lambda seq_mod_prob seq_port_prob < <(
+            jq -r '.settings | [.max_iter, .stop_iter_lambda, .start_input_lambda, .start_undriven_lambda, .seq_mod_prob, .seq_port_prob] | @tsv' "$stats_json"
+        )
+
+        read -r cmd_addmod cmd_extnet cmd_undrive cmd_drive cmd_drives cmd_buf < <(
+            jq -r '[.commands[] | .weight] | @tsv' "$stats_json"
+        )
     fi
 
-    printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
-           "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime" \
-           "$in_nets" "$output_nets" "$total_nets" \
-           "$comb_mods" "$seq_mods" "$total_mods" >> "$results_csv"
+    local in_nets_reduced=NA output_nets_reduced=NA total_nets_reduced=NA
+    local comb_mods_reduced=NA seq_mods_reduced=NA total_mods_reduced=NA
 
-    rm -rf "$OUT_DIR"
+    if [[ -f "${reduction_out_dir:-none}/${FUZZED_TOP}_stats.json" ]]; then
+        read -r in_nets_reduced output_nets_reduced total_nets_reduced \
+                comb_mods_reduced seq_mods_reduced total_mods_reduced < <(
+            jq -r '[.input_nets,.output_nets,.total_nets,.comb_modules,.seq_modules,.total_modules] | @tsv' \
+                "$reduction_out_dir/${FUZZED_TOP}_stats.json"
+        )
+    fi
+
+    {
+        printf "%s,%s,%s,%s,%s," \
+            "$human_date" "$WORKER_ID" "$SEED_HEX" "${RESULT_CATEGORY:-unknown}" "$runtime"
+
+        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
+            "${STAGE_TIMES[run_gen]:-NA}" "${STAGE_TIMES[run_impl]:-NA}" \
+            "${STAGE_TIMES[run_struct]:-NA}" "${STAGE_TIMES[run_miter]:-NA}" \
+            "${STAGE_TIMES[run_verilator]:-NA}" "${STAGE_TIMES[run_z3_smt]:-NA}" \
+            "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
+            "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}"
+
+        printf "%s,%s,%s,%s,%s,%s," \
+            "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods"
+
+        printf "%s,%s,%s,%s,%s,%s," \
+            "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
+            "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced"
+
+        printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+            "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
+            "$seq_mod_prob" "$seq_port_prob" \
+            "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf"
+    } >> "$results_csv"
+
+    # rm -rf "$OUT_DIR"
+}
+
+time_stage() {
+    if [[ ! -v reduction_out_dir ]]; then
+        local stage_name=$(basename "$1")
+    else
+        local stage_name=$(basename "$1")"_reduced"
+    fi
+    local start_time=$(date +%s%6N)
+    exit_code=0
+    "$@" || exit_code=$?
+    local end_time=$(date +%s%6N)
+    local duration=$(( end_time - start_time ))
+    echo "$stage_name,$duration" >> "$LOG_DIR/stage_runtimes.csv"
+    return $exit_code
 }
 
 capture_failed_seed() {
@@ -91,11 +163,11 @@ capture_failed_seed() {
     printf '%-19s | SEED: %-10s | DIR: %-9s | %s\n' "$STAMP" "$SEED_HEX" "$dir" "$msg" \
         >> "$PERMANENT_LOGS/failed_seeds.log"
     echo "SEED: $SEED_HEX | $msg" > "$save/seed.txt"
+    fail "$msg"
 }
 
 trap 'on_exit' EXIT
 trap 'fail "error in $BASH_COMMAND"; RESULT_CATEGORY=driver_error; capture_failed_seed "$BASH_COMMAND"; exit 1' ERR
-trap 'kill -- -$$' INT TERM
 
 info "┌────────────────────── run_equiv ──────────────────────"
 info "│ OUT_DIR : $OUT_DIR"
@@ -105,15 +177,14 @@ info "│ SEED    : $SEED_HEX"
 info "└───────────────────────────────────────────────────────"
 
 # ───── fuzzed netlist generation ──────────────────────────────
-if ! run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
+if ! time_stage run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
     RESULT_CATEGORY="fuznet_fail"
     capture_failed_seed "fuznet failed"
     exit 1
 fi
-
 # ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
-run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
+time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
 case $impl_ret in
     0) ;;
     1) RESULT_CATEGORY="vivado_fail" ; exit 1 ;;
@@ -121,14 +192,14 @@ case $impl_ret in
 esac
 
 # ───── structural equiv (Yosys) ───────────────────────────────
-if run_struct "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR"; then
+if time_stage run_struct "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR"; then
     RESULT_CATEGORY="structural_pass"
     exit 0
 fi
 
 # ───── SAT miter (Yosys-sat) ──────────────────────────────────
 miter_ret=0
-run_miter "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || miter_ret=$?
+time_stage run_miter "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || miter_ret=$?
 
 if (( miter_ret == 0 )); then
     RESULT_CATEGORY="miter_pass"
@@ -141,19 +212,19 @@ fi
 
 # ───── Verilator simulation fallback ──────────────────────────
 verilator_ret=0
-run_verilator "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
+time_stage run_verilator "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
 
 # ───── optional SMTBMC (Z3) checks ────────────────────────────
 if (( USE_SMTBMC )); then
     smt="$OUT_DIR/eq_top.smt2"
-    if run_z3_smt "$OUT_DIR" "$smt" "$LOG_DIR"; then
+    if time_stage run_z3_smt "$OUT_DIR" "$smt" "$LOG_DIR"; then
         RESULT_CATEGORY="bmc_pass"
         exit 0
     else
         RESULT_CATEGORY="bmc_fail"
     fi
 
-    if run_z3_induct "$OUT_DIR" "$smt" "$LOG_DIR"; then
+    if time_stage run_z3_induct "$OUT_DIR" "$smt" "$LOG_DIR"; then
         RESULT_CATEGORY="induct_pass"
         exit 0
     else
@@ -180,14 +251,14 @@ reduction_log_dir="$reduction_out_dir/logs"
 mkdir -p "$reduction_out_dir"
 mkdir -p "$reduction_log_dir"
 
-if ! run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
+if ! time_stage run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
     capture_failed_seed "reduction failed" "rare"
     RESULT_CATEGORY="reduction_fail"
     exit 1
 fi
 
 # ───── Rerun Vivado on reduced netlist ─────────────────────────────
-if ! run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
+if ! time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
     capture_failed_seed "reduced netlist Vivado failed" "rare"
     RESULT_CATEGORY="reduced_vivado_fail"
     exit 1
@@ -195,7 +266,7 @@ fi
 
 # ───── Rerun Verilator simulation ──────────────────────────────────
 verilator_ret=0
-run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
+time_stage run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
 if (( verilator_ret == 2 )); then
     capture_failed_seed "reduced netlist Verilator error" "rare"
     RESULT_CATEGORY="reduced_verilator_error"

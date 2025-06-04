@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <fstream>
 
 #include "netlist.hpp"
 
@@ -12,6 +11,7 @@ public:
     Reducer(const std::string& lib_yaml     = "hardware/xilinx/cells.yaml",
             const std::string& input_json   = "output/output_netlist.json",
             unsigned           seed         = std::random_device{}(),
+            bool               json_stats   = false,
             bool               verbose      = false);
 
     void keep_only_net(const int& output_id);
@@ -22,7 +22,7 @@ private:
     Library library;
     Netlist netlist;
 
-
+    bool json_stats{false};
     bool verbose{false};
 };
 

@@ -3,4 +3,5 @@ add_library(reducer STATIC
 )
 target_include_directories(reducer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(reducer PUBLIC
-                      netlist)
+                      netlist
+                      nlohmann_json::nlohmann_json)
