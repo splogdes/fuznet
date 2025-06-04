@@ -136,7 +136,7 @@ EOF
             "$cmd_addmod" "$cmd_extnet" "$cmd_undrive" "$cmd_drive" "$cmd_drives" "$cmd_buf"
     } >> "$results_csv"
 
-    # rm -rf "$OUT_DIR"
+    rm -rf "$OUT_DIR"
 }
 
 time_stage() {
