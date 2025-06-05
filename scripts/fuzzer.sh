@@ -201,6 +201,7 @@ case $impl_ret in
     0) ;;
     1) RESULT_CATEGORY="vivado_fail" ; exit 1 ;;
     2) RESULT_CATEGORY="vivado_crash"; capture_failed_seed "Vivado crashed" "rare"; exit 0 ;;
+    3) RESULT_CATEGORY="vivado_timeout"; capture_failed_seed "Vivado timed out" "rare"; exit 1 ;;
 esac
 
 # ───── structural equiv (Yosys) ───────────────────────────────

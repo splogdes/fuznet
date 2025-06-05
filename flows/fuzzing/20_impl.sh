@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Arguments:  out_dir synth_top impl_top [fuzed_top] [log_dir]
-# Returns:    0 on success, 1 on failure, 2 on error
+# Returns:    0 on success, 1 on failure, 2 on error, 3 on timeout
 
 run_impl() {
     local out=$1
@@ -11,14 +11,17 @@ run_impl() {
 
     info "Running Vivado implementation for $fuzed_top"
     local vivado_ret=0
-    "$VIVADO_BIN" -mode batch                      \
+    timeout 600 "$VIVADO_BIN" -mode batch          \
                   -log "$log_dir/vivado.log"       \
                   -journal "$log_dir/vivado.jou"   \
                   -source "$VIVADO_TCL"            \
                   -tclargs "$out" "$synth_top" "$impl_top" "$TOP" "$out/$fuzed_top.v" "$VIVADO_XDC" \
                   >/dev/null 2>&1 || vivado_ret=$?
     
-    if (( vivado_ret > 128 )); then
+    if (( vivado_ret == 124 )); then
+        fail "Vivado implementation timed out"
+        return 3
+    elif (( vivado_ret > 128 )); then
         fail "Vivado crashed with signal $vivado_ret"
         return 2
     elif (( vivado_ret > 0 )); then
