@@ -200,7 +200,7 @@ time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR"
 case $impl_ret in
     0) ;;
     1) RESULT_CATEGORY="vivado_fail" ; exit 1 ;;
-    2) RESULT_CATEGORY="vivado_crash"; exit 2 ;;
+    2) RESULT_CATEGORY="vivado_crash"; capture_failed_seed "Vivado crashed" "rare"; exit 0 ;;
 esac
 
 # ───── structural equiv (Yosys) ───────────────────────────────
