@@ -34,7 +34,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   yaml_cpp
   GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-  GIT_TAG        master
+  GIT_TAG        2f86d13775d119edbb69af52e5f566fd65c6953b
 )
 FetchContent_Declare(
   CLI11

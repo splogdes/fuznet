@@ -2,7 +2,7 @@
   description = "fuznet - Vivado fuzz / PnR / equiv flow (pure Nix)";
 
   inputs = {
-    nixpkgs.url     = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url     = "github:nixos/nixpkgs/063f43f2dbdef86376cc29ad646c45c46e93234c";
     flake-utils.url = "github:numtide/flake-utils";
 
     tomlplusplus-src.url = "github:marzer/tomlplusplus/v3.4.0";
