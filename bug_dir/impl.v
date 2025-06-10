@@ -2,7 +2,7 @@
 // Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2024.2 (lin64) Build 5239630 Fri Nov 08 22:34:34 MST 2024
-// Date        : Tue Jun 10 03:02:23 2025
+// Date        : Tue Jun 10 03:34:47 2025
 // Host        : SPL running 64-bit unknown
 // Command     : write_verilog -rename_top impl -force -mode funcsim bug_dir/impl.v
 // Design      : top
@@ -12,8 +12,7 @@
 // --------------------------------------------------------------------------------
 `timescale 1 ps / 1 ps
 
-(* ECO_CHECKSUM = "65e2d8b8" *) (* POWER_OPT_BRAM_CDC = "0" *) (* POWER_OPT_BRAM_SR_ADDR = "0" *) 
-(* POWER_OPT_LOOPED_NET_PERCENTAGE = "0" *) 
+(* NETLIST_CHECKSUM = "65e2d8b8" *) 
 (* NotValidForBitStream *)
 (* \DesignAttr:ENABLE_NOC_NETLIST_VIEW  *) 
 (* \DesignAttr:ENABLE_AIE_NETLIST_VIEW  *) 
