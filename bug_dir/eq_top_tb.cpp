@@ -26,26 +26,22 @@ int main(int argc, char **argv) {
         top->clk = 0;
         top->eval();
         tfp->dump(i * 10);
-        top->_01_ = rnd_bit();
-        top->_07_ = rnd_bit();
-        top->_10_ = rnd_bit();
+        top->_04_ = rnd_bit();
+        top->_12_ = rnd_bit();
 
         top->clk = 1;
         top->eval();
         tfp->dump(i * 10 + 5);
         if (top->trigger) {
             std::cerr << "[TB] Triggered at cycle " << i << std::endl;
-            if (!top->_53_) std::cout << "[TB] Triggered by wire _53_ " << std::endl;
-            if (!top->_73_) std::cout << "[TB] Triggered by wire _73_ " << std::endl;
-            if (!top->_75_) std::cout << "[TB] Triggered by wire _75_ " << std::endl;
-            if (!top->_77_) std::cout << "[TB] Triggered by wire _77_ " << std::endl;
-            if (!top->_79_) std::cout << "[TB] Triggered by wire _79_ " << std::endl;
-            if (!top->_81_) std::cout << "[TB] Triggered by wire _81_ " << std::endl;
-            if (!top->_83_) std::cout << "[TB] Triggered by wire _83_ " << std::endl;
-            if (!top->_85_) std::cout << "[TB] Triggered by wire _85_ " << std::endl;
-            if (!top->_87_) std::cout << "[TB] Triggered by wire _87_ " << std::endl;
-            if (!top->_89_) std::cout << "[TB] Triggered by wire _89_ " << std::endl;
-            if (!top->_91_) std::cout << "[TB] Triggered by wire _91_ " << std::endl;
+            if (!top->_31_) std::cout << "[TB] Triggered by wire _31_ " << std::endl;
+            if (!top->_48_) std::cout << "[TB] Triggered by wire _48_ " << std::endl;
+            if (!top->_50_) std::cout << "[TB] Triggered by wire _50_ " << std::endl;
+            if (!top->_52_) std::cout << "[TB] Triggered by wire _52_ " << std::endl;
+            if (!top->_54_) std::cout << "[TB] Triggered by wire _54_ " << std::endl;
+            if (!top->_56_) std::cout << "[TB] Triggered by wire _56_ " << std::endl;
+            if (!top->_58_) std::cout << "[TB] Triggered by wire _58_ " << std::endl;
+            if (!top->_60_) std::cout << "[TB] Triggered by wire _60_ " << std::endl;
             trigger=true;
         }
     }

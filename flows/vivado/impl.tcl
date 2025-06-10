@@ -13,6 +13,7 @@ read_verilog $netlist
 link_design -part $part -top $fuzz_top
 
 write_verilog -rename_top $synth_top -force -mode funcsim $out_dir/$synth_top\.v
+write_verilog -rename_top $synth_top -include_xilinx_libs -force -mode funcsim $out_dir/$synth_top\_prims\.v
 
 # Now you can do P&R
 opt_design

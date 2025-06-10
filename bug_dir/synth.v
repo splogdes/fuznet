@@ -2,7 +2,7 @@
 // Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2024.2 (lin64) Build 5239630 Fri Nov 08 22:34:34 MST 2024
-// Date        : Mon Jun  2 02:11:15 2025
+// Date        : Tue Jun 10 03:01:57 2025
 // Host        : SPL running 64-bit unknown
 // Command     : write_verilog -rename_top synth -force -mode funcsim bug_dir/synth.v
 // Design      : top
@@ -16,137 +16,87 @@
 (* \DesignAttr:ENABLE_NOC_NETLIST_VIEW  *) 
 (* \DesignAttr:ENABLE_AIE_NETLIST_VIEW  *) 
 module synth
-   (_01_,
-    _07_,
-    _10_,
+   (_04_,
     clk,
-    _53_,
-    _73_,
-    _75_,
-    _77_,
-    _79_,
-    _81_,
-    _83_,
-    _85_,
-    _87_,
-    _89_,
-    _91_);
-  input _01_;
-  input _07_;
-  input _10_;
+    _12_,
+    _31_,
+    _48_,
+    _50_,
+    _52_,
+    _54_,
+    _56_,
+    _58_,
+    _60_);
+  input _04_;
   input clk;
-  output _53_;
-  output _73_;
-  output _75_;
-  output _77_;
-  output _79_;
-  output _81_;
-  output _83_;
-  output _85_;
-  output _87_;
-  output _89_;
-  output _91_;
+  input _12_;
+  output _31_;
+  output _48_;
+  output _50_;
+  output _52_;
+  output _54_;
+  output _56_;
+  output _58_;
+  output _60_;
 
-  wire _01_;
-  wire _03_;
+  wire _04_;
   wire _07_;
-  wire _09_;
-  wire _10_;
-  wire _13_;
-  wire _18_;
-  wire _20_;
-  wire _21_;
-  wire _22_;
-  wire _24_;
-  wire _25_;
-  wire _33_;
-  wire _53_;
-  wire _62_;
-  wire _63_;
-  wire _64_;
-  wire _65_;
-  wire _66_;
-  wire _67_;
-  wire _68_;
-  wire _69_;
-  wire _70_;
-  wire _71_;
-  wire _73_;
-  wire _75_;
-  wire _77_;
-  wire _79_;
-  wire _81_;
-  wire _83_;
-  wire _85_;
-  wire _87_;
-  wire _89_;
-  wire _91_;
+  wire _12_;
+  wire _14_;
+  wire _19_;
+  wire _31_;
+  wire _40_;
+  wire _41_;
+  wire _42_;
+  wire _43_;
+  wire _44_;
+  wire _45_;
+  wire _46_;
+  wire _48_;
+  wire _50_;
+  wire _52_;
+  wire _54_;
+  wire _56_;
+  wire _58_;
+  wire _60_;
 
-  IBUF _02_
-       (.I(_01_),
-        .O(_03_));
-  IBUF _08_
-       (.I(_07_),
-        .O(_09_));
-  IBUF _12_
-       (.I(_10_),
-        .O(_13_));
-  CARRY4 _16_
-       (.CI(_09_),
-        .CO({_62_,_18_,_63_,_20_}),
-        .CYINIT(_09_),
-        .DI({_13_,_09_,_03_,_09_}),
-        .O({_21_,_22_,_64_,_24_}),
-        .S({_03_,_03_,_13_,_13_}));
-  (* XILINX_LEGACY_PRIM = "MUXF5" *) 
-  (* XILINX_TRANSFORM_PINMAP = "S:I2" *) 
-  LUT3 #(
-    .INIT(8'hCA)) 
-    _26_
-       (.I0(_24_),
-        .I1(_18_),
-        .I2(_22_),
-        .O(_25_));
-  CARRY4 _29_
-       (.CI(_22_),
-        .CO({_65_,_66_,_67_,_33_}),
-        .CYINIT(_13_),
-        .DI({_21_,_24_,_25_,_22_}),
-        .O({_68_,_69_,_70_,_71_}),
-        .S({_20_,_22_,_09_,_25_}));
-  OBUF _52_
-       (.I(_33_),
-        .O(_53_));
-  OBUF _72_
-       (.I(_62_),
-        .O(_73_));
-  OBUF _74_
-       (.I(_63_),
-        .O(_75_));
-  OBUF _76_
-       (.I(_64_),
-        .O(_77_));
-  OBUF _78_
-       (.I(_65_),
-        .O(_79_));
-  OBUF _80_
-       (.I(_66_),
-        .O(_81_));
-  OBUF _82_
-       (.I(_67_),
-        .O(_83_));
-  OBUF _84_
-       (.I(_68_),
-        .O(_85_));
-  OBUF _86_
-       (.I(_69_),
-        .O(_87_));
-  OBUF _88_
-       (.I(_70_),
-        .O(_89_));
-  OBUF _90_
-       (.I(_71_),
-        .O(_91_));
+  IBUF _06_
+       (.I(_04_),
+        .O(_07_));
+  IBUF _13_
+       (.I(_12_),
+        .O(_14_));
+  CARRY4 _15_
+       (.CI(1'b1),
+        .CO({_40_,_41_,_42_,_19_}),
+        .CYINIT(_14_),
+        .DI({_07_,_07_,_07_,_14_}),
+        .O({_43_,_44_,_45_,_46_}),
+        .S({_07_,_07_,_07_,_07_}));
+  OBUF _30_
+       (.I(_19_),
+        .O(_31_));
+  OBUF _47_
+       (.I(_40_),
+        .O(_48_));
+  OBUF _49_
+       (.I(_41_),
+        .O(_50_));
+  OBUF _51_
+       (.I(_42_),
+        .O(_52_));
+  OBUF _53_
+       (.I(_43_),
+        .O(_54_));
+  OBUF _55_
+       (.I(_44_),
+        .O(_56_));
+  OBUF _57_
+       (.I(_45_),
+        .O(_58_));
+  OBUF _59_
+       (.I(_46_),
+        .O(_60_));
 endmodule
 `ifndef GLBL
 `define GLBL

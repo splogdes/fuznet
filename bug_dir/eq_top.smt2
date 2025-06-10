@@ -2,73 +2,46 @@
 ; yosys-smt2-module eq_top
 (declare-sort |eq_top_s| 0)
 (declare-fun |eq_top_is| (|eq_top_s|) Bool)
-(declare-fun |eq_top#0| (|eq_top_s|) (_ BitVec 1)) ; \in__10_
-(declare-fun |eq_top#1| (|eq_top_s|) (_ BitVec 1)) ; \in__01_
-(declare-fun |eq_top#2| (|eq_top_s|) (_ BitVec 1)) ; \in__07_
-(define-fun |eq_top#3| ((state |eq_top_s|)) (_ BitVec 1) (bvor (|eq_top#2| state) (|eq_top#2| state))) ; $flatten\gold.\_16_.$or$hardware/xilinx/cell_sim.v:381$53_Y
-(define-fun |eq_top#4| ((state |eq_top_s|)) (_ BitVec 1) (bvor (|eq_top#2| state) (|eq_top#2| state))) ; $flatten\gold.\_16_.$or$hardware/xilinx/cell_sim.v:382$55_Y
-(define-fun |eq_top#5| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#4| state) (|eq_top#2| state))) ; $flatten\gold.\_16_.$ternary$hardware/xilinx/cell_sim.v:382$56_Y
-(define-fun |eq_top#6| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#5| state) (|eq_top#1| state))) ; $flatten\gold.\_16_.$ternary$hardware/xilinx/cell_sim.v:383$57_Y
-(define-fun |eq_top#7| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#1| state)) #b1) (|eq_top#6| state) (|eq_top#2| state))) ; $flatten\gold.\_16_.$ternary$hardware/xilinx/cell_sim.v:384$58_Y
-(define-fun |eq_top#8| ((state |eq_top_s|)) (_ BitVec 4) (bvxor (concat (|eq_top#1| state) (concat (|eq_top#1| state) (concat (|eq_top#0| state) (|eq_top#0| state)))) (concat (|eq_top#7| state) (concat (|eq_top#6| state) (concat (|eq_top#5| state) (|eq_top#3| state)))))) ; $flatten\gold.\_16_.$xor$hardware/xilinx/cell_sim.v:381$54_Y
-(define-fun |eq_top#9| ((state |eq_top_s|)) (_ BitVec 4) (ite (= ((_ extract 2 2) (|eq_top#8| state)) #b1) #b1100 #b1010)) ; $flatten\gold.\_26_.$ternary$hardware/xilinx/cell_sim.v:212$1807_Y
-(define-fun |eq_top#10| ((state |eq_top_s|)) (_ BitVec 2) (ite (= ((_ extract 0 0) (|eq_top#7| state)) #b1) ((_ extract 3 2) (|eq_top#9| state)) ((_ extract 1 0) (|eq_top#9| state)))) ; $flatten\gold.\_26_.$ternary$hardware/xilinx/cell_sim.v:213$1808_Y
-(define-fun |eq_top#11| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#8| state)) #b1) ((_ extract 1 1) (|eq_top#10| state)) ((_ extract 0 0) (|eq_top#10| state)))) ; $flatten\gold.\_26_.$ternary$hardware/xilinx/cell_sim.v:214$1809_Y
-(define-fun |eq_top#12| ((state |eq_top_s|)) (_ BitVec 1) (bvor ((_ extract 2 2) (|eq_top#8| state)) (|eq_top#0| state))) ; $flatten\gold.\_29_.$or$hardware/xilinx/cell_sim.v:381$53_Y
-(define-fun |eq_top#13| ((state |eq_top_s|)) (_ BitVec 1) (bvor ((_ extract 2 2) (|eq_top#8| state)) (|eq_top#0| state))) ; $flatten\gold.\_29_.$or$hardware/xilinx/cell_sim.v:382$55_Y
-(define-fun |eq_top#14| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#11| state)) #b1) (|eq_top#13| state) ((_ extract 2 2) (|eq_top#8| state)))) ; $flatten\gold.\_29_.$ternary$hardware/xilinx/cell_sim.v:382$56_Y
-(define-fun |eq_top#15| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#2| state)) #b1) (|eq_top#14| state) (|eq_top#11| state))) ; $flatten\gold.\_29_.$ternary$hardware/xilinx/cell_sim.v:383$57_Y
-(define-fun |eq_top#16| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 2 2) (|eq_top#8| state)) #b1) (|eq_top#15| state) ((_ extract 0 0) (|eq_top#8| state)))) ; $flatten\gold.\_29_.$ternary$hardware/xilinx/cell_sim.v:384$58_Y
-(define-fun |eq_top#17| ((state |eq_top_s|)) (_ BitVec 4) (bvxor (concat (|eq_top#5| state) (concat ((_ extract 2 2) (|eq_top#8| state)) (concat (|eq_top#2| state) (|eq_top#11| state)))) (concat (|eq_top#16| state) (concat (|eq_top#15| state) (concat (|eq_top#14| state) (|eq_top#12| state)))))) ; $flatten\gold.\_29_.$xor$hardware/xilinx/cell_sim.v:381$54_Y
-(define-fun |eq_top#18| ((state |eq_top_s|)) (_ BitVec 1) (bvor (|eq_top#2| state) (|eq_top#2| state))) ; $flatten\gate.\_16_.$or$hardware/xilinx/cell_sim.v:381$53_Y
-(define-fun |eq_top#19| ((state |eq_top_s|)) (_ BitVec 1) (bvor (|eq_top#2| state) (|eq_top#2| state))) ; $flatten\gate.\_16_.$or$hardware/xilinx/cell_sim.v:382$55_Y
-(define-fun |eq_top#20| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#19| state) (|eq_top#2| state))) ; $flatten\gate.\_16_.$ternary$hardware/xilinx/cell_sim.v:382$56_Y
-(define-fun |eq_top#21| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#20| state) (|eq_top#1| state))) ; $flatten\gate.\_16_.$ternary$hardware/xilinx/cell_sim.v:383$57_Y
-(define-fun |eq_top#22| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#1| state)) #b1) (|eq_top#21| state) (|eq_top#2| state))) ; $flatten\gate.\_16_.$ternary$hardware/xilinx/cell_sim.v:384$58_Y
-(define-fun |eq_top#23| ((state |eq_top_s|)) (_ BitVec 4) (bvxor (concat (|eq_top#1| state) (concat (|eq_top#1| state) (concat (|eq_top#0| state) (|eq_top#0| state)))) (concat (|eq_top#22| state) (concat (|eq_top#21| state) (concat (|eq_top#20| state) (|eq_top#18| state)))))) ; $flatten\gate.\_16_.$xor$hardware/xilinx/cell_sim.v:381$54_Y
-(define-fun |eq_top#24| ((state |eq_top_s|)) (_ BitVec 4) (ite (= ((_ extract 2 2) (|eq_top#23| state)) #b1) #b1100 #b1010)) ; $flatten\gate.\_26_.$ternary$hardware/xilinx/cell_sim.v:212$1807_Y
-(define-fun |eq_top#25| ((state |eq_top_s|)) (_ BitVec 2) (ite (= ((_ extract 0 0) (|eq_top#22| state)) #b1) ((_ extract 3 2) (|eq_top#24| state)) ((_ extract 1 0) (|eq_top#24| state)))) ; $flatten\gate.\_26_.$ternary$hardware/xilinx/cell_sim.v:213$1808_Y
-(define-fun |eq_top#26| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#23| state)) #b1) ((_ extract 1 1) (|eq_top#25| state)) ((_ extract 0 0) (|eq_top#25| state)))) ; $flatten\gate.\_26_.$ternary$hardware/xilinx/cell_sim.v:214$1809_Y
-(define-fun |eq_top#27| ((state |eq_top_s|)) (_ BitVec 1) (bvor ((_ extract 2 2) (|eq_top#23| state)) (|eq_top#0| state))) ; $flatten\gate.\_29_.$or$hardware/xilinx/cell_sim.v:381$53_Y
-(define-fun |eq_top#28| ((state |eq_top_s|)) (_ BitVec 1) (bvor ((_ extract 2 2) (|eq_top#23| state)) (|eq_top#0| state))) ; $flatten\gate.\_29_.$or$hardware/xilinx/cell_sim.v:382$55_Y
-(define-fun |eq_top#29| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#26| state)) #b1) (|eq_top#28| state) ((_ extract 2 2) (|eq_top#23| state)))) ; $flatten\gate.\_29_.$ternary$hardware/xilinx/cell_sim.v:382$56_Y
-(define-fun |eq_top#30| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#2| state)) #b1) (|eq_top#29| state) (|eq_top#26| state))) ; $flatten\gate.\_29_.$ternary$hardware/xilinx/cell_sim.v:383$57_Y
-(define-fun |eq_top#31| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 2 2) (|eq_top#23| state)) #b1) (|eq_top#30| state) ((_ extract 0 0) (|eq_top#23| state)))) ; $flatten\gate.\_29_.$ternary$hardware/xilinx/cell_sim.v:384$58_Y
-(define-fun |eq_top#32| ((state |eq_top_s|)) (_ BitVec 4) (bvxor (concat (|eq_top#2| state) (concat ((_ extract 2 2) (|eq_top#23| state)) (concat (|eq_top#2| state) (|eq_top#26| state)))) (concat (|eq_top#31| state) (concat (|eq_top#30| state) (concat (|eq_top#29| state) (|eq_top#27| state)))))) ; $flatten\gate.\_29_.$xor$hardware/xilinx/cell_sim.v:381$54_Y
-(define-fun |eq_top#33| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#17| state)) ((_ extract 0 0) (|eq_top#32| state)))) ; $auto$miter.cc:242:create_miter_equiv$1782
-(define-fun |eq_top#34| ((state |eq_top_s|)) Bool (= ((_ extract 1 1) (|eq_top#17| state)) ((_ extract 1 1) (|eq_top#32| state)))) ; $auto$miter.cc:242:create_miter_equiv$1784
-(define-fun |eq_top#35| ((state |eq_top_s|)) Bool (= ((_ extract 2 2) (|eq_top#17| state)) ((_ extract 2 2) (|eq_top#32| state)))) ; $auto$miter.cc:242:create_miter_equiv$1786
-(define-fun |eq_top#36| ((state |eq_top_s|)) Bool (= ((_ extract 3 3) (|eq_top#17| state)) ((_ extract 3 3) (|eq_top#32| state)))) ; $auto$miter.cc:242:create_miter_equiv$1788
-(define-fun |eq_top#37| ((state |eq_top_s|)) Bool (= (|eq_top#15| state) (|eq_top#30| state))) ; $auto$miter.cc:242:create_miter_equiv$1790
-(define-fun |eq_top#38| ((state |eq_top_s|)) Bool (= (|eq_top#16| state) (|eq_top#31| state))) ; $auto$miter.cc:242:create_miter_equiv$1792
-(define-fun |eq_top#39| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#5| state)) #b1) (|eq_top#16| state) ((_ extract 3 3) (|eq_top#8| state)))) ; $flatten\gold.\_29_.$ternary$hardware/xilinx/cell_sim.v:385$59_Y
-(define-fun |eq_top#40| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#2| state)) #b1) (|eq_top#31| state) ((_ extract 3 3) (|eq_top#23| state)))) ; $flatten\gate.\_29_.$ternary$hardware/xilinx/cell_sim.v:385$59_Y
-(define-fun |eq_top#41| ((state |eq_top_s|)) Bool (= (|eq_top#39| state) (|eq_top#40| state))) ; $auto$miter.cc:242:create_miter_equiv$1794
-(define-fun |eq_top#42| ((state |eq_top_s|)) Bool (= ((_ extract 1 1) (|eq_top#8| state)) ((_ extract 1 1) (|eq_top#23| state)))) ; $auto$miter.cc:242:create_miter_equiv$1796
-(define-fun |eq_top#43| ((state |eq_top_s|)) Bool (= (|eq_top#6| state) (|eq_top#21| state))) ; $auto$miter.cc:242:create_miter_equiv$1798
-(define-fun |eq_top#44| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#1| state)) #b1) (|eq_top#7| state) (|eq_top#0| state))) ; $flatten\gold.\_16_.$ternary$hardware/xilinx/cell_sim.v:385$59_Y
-(define-fun |eq_top#45| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#1| state)) #b1) (|eq_top#22| state) (|eq_top#0| state))) ; $flatten\gate.\_16_.$ternary$hardware/xilinx/cell_sim.v:385$59_Y
-(define-fun |eq_top#46| ((state |eq_top_s|)) Bool (= (|eq_top#44| state) (|eq_top#45| state))) ; $auto$miter.cc:242:create_miter_equiv$1800
-(define-fun |eq_top#47| ((state |eq_top_s|)) Bool (= (|eq_top#14| state) ((_ extract 2 2) (|eq_top#23| state)))) ; $auto$miter.cc:242:create_miter_equiv$1802
-(define-fun |eq_top#48| ((state |eq_top_s|)) Bool (and  (|eq_top#33| state) (|eq_top#34| state) (|eq_top#35| state) (|eq_top#36| state) (|eq_top#37| state) (|eq_top#38| state) (|eq_top#41| state) (|eq_top#42| state) (|eq_top#43| state) (|eq_top#46| state) (|eq_top#47| state))) ; $auto$miter.cc:269:create_miter_equiv$1804
-(define-fun |eq_top#49| ((state |eq_top_s|)) (_ BitVec 1) (bvnot (ite (|eq_top#48| state) #b1 #b0))) ; \trigger
+(declare-fun |eq_top#0| (|eq_top_s|) (_ BitVec 1)) ; \in__04_
+(declare-fun |eq_top#1| (|eq_top_s|) (_ BitVec 1)) ; \in__12_
+(define-fun |eq_top#2| ((state |eq_top_s|)) (_ BitVec 1) (bvor #b1 (|eq_top#1| state))) ; $flatten\gold.\_15_.$or$hardware/xilinx/cell_sim.v:381$53_Y
+(define-fun |eq_top#3| ((state |eq_top_s|)) (_ BitVec 1) (bvor #b1 (|eq_top#1| state))) ; $flatten\gold.\_15_.$or$hardware/xilinx/cell_sim.v:382$55_Y
+(define-fun |eq_top#4| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#3| state) (|eq_top#1| state))) ; $flatten\gold.\_15_.$ternary$hardware/xilinx/cell_sim.v:382$56_Y
+(define-fun |eq_top#5| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#4| state) (|eq_top#0| state))) ; $flatten\gold.\_15_.$ternary$hardware/xilinx/cell_sim.v:383$57_Y
+(define-fun |eq_top#6| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#5| state) (|eq_top#0| state))) ; $flatten\gold.\_15_.$ternary$hardware/xilinx/cell_sim.v:384$58_Y
+(define-fun |eq_top#7| ((state |eq_top_s|)) (_ BitVec 4) (bvxor (concat (|eq_top#0| state) (concat (|eq_top#0| state) (concat (|eq_top#0| state) (|eq_top#0| state)))) (concat (|eq_top#6| state) (concat (|eq_top#5| state) (concat (|eq_top#4| state) (|eq_top#2| state)))))) ; $flatten\gold.\_15_.$xor$hardware/xilinx/cell_sim.v:381$54_Y
+(define-fun |eq_top#8| ((state |eq_top_s|)) (_ BitVec 1) (bvor #b1 (|eq_top#1| state))) ; $flatten\gate.\_15_.$or$hardware/xilinx/cell_sim.v:381$53_Y
+(define-fun |eq_top#9| ((state |eq_top_s|)) (_ BitVec 1) (bvor #b1 (|eq_top#1| state))) ; $flatten\gate.\_15_.$or$hardware/xilinx/cell_sim.v:382$55_Y
+(define-fun |eq_top#10| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#9| state) (|eq_top#1| state))) ; $flatten\gate.\_15_.$ternary$hardware/xilinx/cell_sim.v:382$56_Y
+(define-fun |eq_top#11| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#10| state) (|eq_top#0| state))) ; $flatten\gate.\_15_.$ternary$hardware/xilinx/cell_sim.v:383$57_Y
+(define-fun |eq_top#12| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#11| state) (|eq_top#0| state))) ; $flatten\gate.\_15_.$ternary$hardware/xilinx/cell_sim.v:384$58_Y
+(define-fun |eq_top#13| ((state |eq_top_s|)) (_ BitVec 4) (bvxor (concat (|eq_top#0| state) (concat (|eq_top#0| state) (concat (|eq_top#0| state) (|eq_top#0| state)))) (concat (|eq_top#12| state) (concat (|eq_top#11| state) (concat (|eq_top#10| state) (|eq_top#8| state)))))) ; $flatten\gate.\_15_.$xor$hardware/xilinx/cell_sim.v:381$54_Y
+(define-fun |eq_top#14| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#7| state)) ((_ extract 0 0) (|eq_top#13| state)))) ; $auto$miter.cc:242:create_miter_equiv$1782
+(define-fun |eq_top#15| ((state |eq_top_s|)) Bool (= ((_ extract 1 1) (|eq_top#7| state)) ((_ extract 1 1) (|eq_top#13| state)))) ; $auto$miter.cc:242:create_miter_equiv$1784
+(define-fun |eq_top#16| ((state |eq_top_s|)) Bool (= ((_ extract 2 2) (|eq_top#7| state)) ((_ extract 2 2) (|eq_top#13| state)))) ; $auto$miter.cc:242:create_miter_equiv$1786
+(define-fun |eq_top#17| ((state |eq_top_s|)) Bool (= ((_ extract 3 3) (|eq_top#7| state)) ((_ extract 3 3) (|eq_top#13| state)))) ; $auto$miter.cc:242:create_miter_equiv$1788
+(define-fun |eq_top#18| ((state |eq_top_s|)) Bool (= (|eq_top#5| state) (|eq_top#11| state))) ; $auto$miter.cc:242:create_miter_equiv$1790
+(define-fun |eq_top#19| ((state |eq_top_s|)) Bool (= (|eq_top#6| state) (|eq_top#12| state))) ; $auto$miter.cc:242:create_miter_equiv$1792
+(define-fun |eq_top#20| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#6| state) (|eq_top#0| state))) ; $flatten\gold.\_15_.$ternary$hardware/xilinx/cell_sim.v:385$59_Y
+(define-fun |eq_top#21| ((state |eq_top_s|)) (_ BitVec 1) (ite (= ((_ extract 0 0) (|eq_top#0| state)) #b1) (|eq_top#12| state) (|eq_top#0| state))) ; $flatten\gate.\_15_.$ternary$hardware/xilinx/cell_sim.v:385$59_Y
+(define-fun |eq_top#22| ((state |eq_top_s|)) Bool (= (|eq_top#20| state) (|eq_top#21| state))) ; $auto$miter.cc:242:create_miter_equiv$1794
+(define-fun |eq_top#23| ((state |eq_top_s|)) Bool (= (|eq_top#4| state) (|eq_top#1| state))) ; $auto$miter.cc:242:create_miter_equiv$1796
+(define-fun |eq_top#24| ((state |eq_top_s|)) Bool (and  (|eq_top#14| state) (|eq_top#15| state) (|eq_top#16| state) (|eq_top#17| state) (|eq_top#18| state) (|eq_top#19| state) (|eq_top#22| state) (|eq_top#23| state))) ; $auto$miter.cc:269:create_miter_equiv$1798
+(define-fun |eq_top#25| ((state |eq_top_s|)) (_ BitVec 1) (bvnot (ite (|eq_top#24| state) #b1 #b0))) ; \trigger
 ; yosys-smt2-output trigger 1
-(define-fun |eq_top_n trigger| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#49| state)) #b1))
-; yosys-smt2-input in__01_ 1
-; yosys-smt2-witness {"offset": 0, "path": ["\\in__01_"], "smtname": "in__01_", "smtoffset": 0, "type": "input", "width": 1}
-(define-fun |eq_top_n in__01_| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#1| state)) #b1))
-; yosys-smt2-input in__07_ 1
-; yosys-smt2-witness {"offset": 0, "path": ["\\in__07_"], "smtname": "in__07_", "smtoffset": 0, "type": "input", "width": 1}
-(define-fun |eq_top_n in__07_| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#2| state)) #b1))
-; yosys-smt2-input in__10_ 1
-; yosys-smt2-witness {"offset": 0, "path": ["\\in__10_"], "smtname": "in__10_", "smtoffset": 0, "type": "input", "width": 1}
-(define-fun |eq_top_n in__10_| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#0| state)) #b1))
-(declare-fun |eq_top#50| (|eq_top_s|) Bool) ; \in_clk
+(define-fun |eq_top_n trigger| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#25| state)) #b1))
+; yosys-smt2-input in__04_ 1
+; yosys-smt2-witness {"offset": 0, "path": ["\\in__04_"], "smtname": "in__04_", "smtoffset": 0, "type": "input", "width": 1}
+(define-fun |eq_top_n in__04_| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#0| state)) #b1))
+(declare-fun |eq_top#26| (|eq_top_s|) Bool) ; \in_clk
 ; yosys-smt2-input in_clk 1
 ; yosys-smt2-witness {"offset": 0, "path": ["\\in_clk"], "smtname": "in_clk", "smtoffset": 0, "type": "input", "width": 1}
-(define-fun |eq_top_n in_clk| ((state |eq_top_s|)) Bool (|eq_top#50| state))
-; yosys-smt2-assert 0 $auto$miter.cc:274:create_miter_equiv$1805
-(define-fun |eq_top_a 0| ((state |eq_top_s|)) Bool (or (|eq_top#48| state) (not true))) ; $auto$miter.cc:274:create_miter_equiv$1805
+(define-fun |eq_top_n in_clk| ((state |eq_top_s|)) Bool (|eq_top#26| state))
+; yosys-smt2-input in__12_ 1
+; yosys-smt2-witness {"offset": 0, "path": ["\\in__12_"], "smtname": "in__12_", "smtoffset": 0, "type": "input", "width": 1}
+(define-fun |eq_top_n in__12_| ((state |eq_top_s|)) Bool (= ((_ extract 0 0) (|eq_top#1| state)) #b1))
+; yosys-smt2-assert 0 $auto$miter.cc:274:create_miter_equiv$1799
+(define-fun |eq_top_a 0| ((state |eq_top_s|)) Bool (or (|eq_top#24| state) (not true))) ; $auto$miter.cc:274:create_miter_equiv$1799
 (define-fun |eq_top_a| ((state |eq_top_s|)) Bool 
   (|eq_top_a 0| state)
 )
