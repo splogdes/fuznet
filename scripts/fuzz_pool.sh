@@ -9,7 +9,20 @@ cd "$PROJECT_ROOT"
 workers=${FUZNET_WORKERS:-1}
 echo "[POOL] launching $workers workers…"
 
-trap 'echo "[POOL] Terminating workers..."; kill -- -$$' EXIT
+cleanup() {
+    echo "[POOL] Terminating workers…"
+
+    kill -TERM -- -$$ 2>/dev/null || true
+
+    sleep 1
+
+    kill -- -$$ 2>/dev/null || true
+}
+
+trap cleanup EXIT
+
+trap 'exit 130' INT TERM
+
 
 for i in $(seq $workers); do
     (

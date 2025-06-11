@@ -5,7 +5,7 @@
 # External deps: Bash 4, Vivado, Yosys (+smtbmc), Verilator
 #--------------------------------------------------------------------------
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # ───── shared helpers / stage functions ───────────────────────────────────
 source "$(dirname "$0")/../flows/fuzzing/lib.sh"
@@ -147,7 +147,7 @@ EOF
     echo "$result_line" >> "$results_csv"
 
 
-    rm -rf "$OUT_DIR"
+    rm -rf "$OUT_DIR" || true
 }
 
 time_stage() {
@@ -177,9 +177,14 @@ capture_failed_seed() {
     fail "$msg"
 }
 
-trap 'exit 0' SIGINT SIGTERM
+sigint_handler() {
+    echo "Caught SIGINT or SIGTERM, exiting..."
+    rm -rf "$OUT_DIR" 2>/dev/null || true
+}
+
 trap 'on_exit' EXIT
 trap 'fail "error in $BASH_COMMAND"; RESULT_CATEGORY=driver_error; capture_failed_seed "$BASH_COMMAND"; exit 1' ERR
+trap 'sigint_handler' INT TERM
 
 info "┌────────────────────── run_equiv ──────────────────────"
 info "│ OUT_DIR : $OUT_DIR"
