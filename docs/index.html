@@ -14,8 +14,8 @@ var graphviz = d3.select("#graph").graphviz()
     .transition(function () {
         return d3.transition("graphviz")
             .ease(d3.easeLinear)
-            .delay(80)
-            .duration(4000);
+            .delay(40)
+            .duration(2000);
     })
     .on("initEnd", render);
 
@@ -28,7 +28,7 @@ function render() {
         .on("end", function () {
             render();
         })
-        .zoom(true);
+        .zoom(false);
 
     dotIndex = (dotIndex + 1) % dots.length;
 }
@@ -319,6 +319,74 @@ var dots = [
         '  net_22:e -> IBUF_23:<I> [color="black",fontcolor="black"];',
         '  net_24 [shape=diamond,label="net_24",color="black",fontcolor="black"];',
         '  IBUF_23:<O> -> net_24:w [color="black",fontcolor="black"];',
+        '}',
+    ],
+    [
+        'digraph "top" {',
+        'rankdir="LR";',
+        'remincross=true;',
+        '  IBUF_3 [shape=record,label="{{<I> I} | IBUF | {<O> O}}",color="black",fontcolor="black"];',
+        '  IBUF_6 [shape=record,label="{{<I> I} | IBUF | {<O> O}}",color="black",fontcolor="black"];',
+        '  IBUF_10 [shape=record,label="{{<I> I} | IBUF | {<O> O}}",color="black",fontcolor="black"];',
+        '  BUFG_12 [shape=record,label="{{<I> I} | BUFG | {<O> O}}",color="black",fontcolor="black"];',
+        '  FDRE_1_14 [shape=record,label="{{<C> C | <CE> CE | <D> D | <R> R} | FDRE_1 | {<Q> Q}}",color="black",fontcolor="black"];',
+        '  AND2B1L_16 [shape=record,label="{{<DI> DI | <SRI> SRI} | AND2B1L | {<O> O}}",color="black",fontcolor="black"];',
+        '  MUXCY_18 [shape=record,label="{{<CI> CI | <DI> DI | <S> S} | MUXCY | {<O> O}}",color="black",fontcolor="black"];',
+        '  FDRE_1_20 [shape=record,label="{{<C> C | <CE> CE | <D> D | <R> R} | FDRE_1 | {<Q> Q}}",color="black",fontcolor="black"];',
+        '  IBUF_23 [shape=record,label="{{<I> I} | IBUF | {<O> O}}",color="black",fontcolor="black"];',
+        '  FDRSE_1_25 [shape=record,label="{{<C> C | <CE> CE | <D> D | <R> R | <S> S} | FDRSE_1 | {<Q> Q}}",color="black",fontcolor="black"];',
+        '  OBUF_26 [shape=record,label="{{<I> I} | OBUF | {<O> O}}",color="black",fontcolor="black"];',
+        '  net_1 [shape=diamond,label="net_1",color="black",fontcolor="black"];',
+        '  FDRSE_1_25:<Q> -> net_1:w [color="black",fontcolor="black"];',
+        '  net_1:e -> MUXCY_18:<CI> [color="black",fontcolor="black"];',
+        '  net_1:e -> MUXCY_18:<S> [color="black",fontcolor="black"];',
+        '  net_1:e -> FDRE_1_20:<D> [color="black",fontcolor="black"];',
+        '  net_2 [shape=octagon,label="net_2",color="black",fontcolor="black"];',
+        '  net_2:e -> IBUF_3:<I> [color="black",fontcolor="black"];',
+        '  net_4 [shape=diamond,label="net_4",color="black",fontcolor="black"];',
+        '  IBUF_3:<O> -> net_4:w [color="black",fontcolor="black"];',
+        '  net_4:e -> FDRE_1_14:<CE> [color="black",fontcolor="black"];',
+        '  net_4:e -> AND2B1L_16:<DI> [color="black",fontcolor="black"];',
+        '  net_4:e -> FDRSE_1_25:<R> [color="black",fontcolor="black"];',
+        '  net_5 [shape=octagon,label="net_5",color="black",fontcolor="black"];',
+        '  net_5:e -> IBUF_6:<I> [color="black",fontcolor="black"];',
+        '  net_7 [shape=diamond,label="net_7",color="black",fontcolor="black"];',
+        '  IBUF_6:<O> -> net_7:w [color="black",fontcolor="black"];',
+        '  net_7:e -> FDRE_1_14:<D> [color="black",fontcolor="black"];',
+        '  net_7:e -> AND2B1L_16:<SRI> [color="black",fontcolor="black"];',
+        '  net_7:e -> FDRE_1_20:<CE> [color="black",fontcolor="black"];',
+        '  net_8 [shape=octagon,label="net_8",color="black",fontcolor="black"];',
+        '  net_8:e -> IBUF_10:<I> [color="black",fontcolor="black"];',
+        '  clk [shape=octagon,label="clk",color="black",fontcolor="black"];',
+        '  clk:e -> BUFG_12:<I> [color="black",fontcolor="black"];',
+        '  net_11 [shape=diamond,label="net_11",color="black",fontcolor="black"];',
+        '  IBUF_10:<O> -> net_11:w [color="black",fontcolor="black"];',
+        '  net_11:e -> FDRE_1_14:<R> [color="black",fontcolor="black"];',
+        '  net_11:e -> MUXCY_18:<DI> [color="black",fontcolor="black"];',
+        '  net_13 [shape=diamond,label="net_13",color="black",fontcolor="black"];',
+        '  BUFG_12:<O> -> net_13:w [color="black",fontcolor="black"];',
+        '  net_13:e -> FDRE_1_14:<C> [color="black",fontcolor="black"];',
+        '  net_13:e -> FDRE_1_20:<C> [color="black",fontcolor="black"];',
+        '  net_13:e -> FDRSE_1_25:<C> [color="black",fontcolor="black"];',
+        '  net_15 [shape=diamond,label="net_15",color="black",fontcolor="black"];',
+        '  FDRE_1_14:<Q> -> net_15:w [color="black",fontcolor="black"];',
+        '  net_15:e -> FDRSE_1_25:<S> [color="black",fontcolor="black"];',
+        '  net_17 [shape=diamond,label="net_17",color="black",fontcolor="black"];',
+        '  AND2B1L_16:<O> -> net_17:w [color="black",fontcolor="black"];',
+        '  net_17:e -> FDRE_1_20:<R> [color="black",fontcolor="black"];',
+        '  net_19 [shape=diamond,label="net_19",color="black",fontcolor="black"];',
+        '  MUXCY_18:<O> -> net_19:w [color="black",fontcolor="black"];',
+        '  net_19:e -> FDRSE_1_25:<D> [color="black",fontcolor="black"];',
+        '  net_21 [shape=diamond,label="net_21",color="black",fontcolor="black"];',
+        '  FDRE_1_20:<Q> -> net_21:w [color="black",fontcolor="black"];',
+        '  net_21:e -> OBUF_26:<I> [color="black",fontcolor="black"];',
+        '  net_22 [shape=octagon,label="net_22",color="black",fontcolor="black"];',
+        '  net_22:e -> IBUF_23:<I> [color="black",fontcolor="black"];',
+        '  net_24 [shape=diamond,label="net_24",color="black",fontcolor="black"];',
+        '  IBUF_23:<O> -> net_24:w [color="black",fontcolor="black"];',
+        '  net_24:e -> FDRSE_1_25:<CE> [color="black",fontcolor="black"];',
+        '  net_27 [shape=octagon,label="net_27",color="black",fontcolor="black"];',
+        '  OBUF_26:<O> -> net_27:w [color="black",fontcolor="black"];',
         '}',
     ],
     [
