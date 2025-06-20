@@ -1,6 +1,8 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <string>
+#include <set>
 
 #include "netlist.hpp"
 
@@ -14,13 +16,19 @@ public:
             bool               json_stats   = false,
             bool               verbose      = false);
 
-    void keep_only_net(const int& output_id);
     void write_outputs(const std::string& output_json) const;
-
+    int  reduce(const int& output_id, bool success = true);
+    
 private:
+    
+    int  iterative_reduce(bool success);
+    void keep_only_net(const int& output_id);
+
     std::mt19937_64 rng;
     Library library;
     Netlist netlist;
+
+    nlohmann::json json_data;
 
     bool json_stats{false};
     bool verbose{false};

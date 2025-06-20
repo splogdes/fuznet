@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <nlohmann/json.hpp>
 
 #include "reducer.hpp"
 
@@ -16,7 +15,7 @@ Reducer::Reducer(const std::string& lib_yaml,
        library(lib_yaml, rng), 
        netlist(library, rng),
        json_stats(json_stats),
-       verbose(verbose) 
+       verbose(verbose)
 {
     std::ifstream json_file(input_json);
     if (!json_file.is_open()) {
@@ -24,22 +23,53 @@ Reducer::Reducer(const std::string& lib_yaml,
         throw std::runtime_error("Failed to open input JSON file");
     }
     
-    nlohmann::json json_netlist;
-    json_file >> json_netlist;
+    json_file >> json_data;
     json_file.close();
-
-    netlist.load_from_json(json_netlist);
-
-    if (verbose) {
-        std::cout << "Loaded netlist from: " << input_json << "\n"
-                  << "Netlist has:" << "\n";
-        netlist.print();
-    }
 }
 
+int Reducer::reduce(const int& output_id, bool success) {
+    if (verbose)
+        std::cout << "Starting reduction process.\n";
+
+    int iterations = json_data.value("iterations", 0);
+    json_data["iterations"] = iterations + 1;
+
+    if (iterations == 0)
+        json_data["old"] = json_data["new"];
+
+    if (output_id >= 0 && iterations == 0) {
+        keep_only_net(output_id);
+        return 0;
+    }
+
+    if (verbose)
+        std::cout << "Iterative reduction started with last success: " << success << "\n";
+    
+    int result = iterative_reduce(success);
+
+    if (result == 0) {
+        if (verbose)
+            std::cout << "Reduction completed successfully.\n";
+        return 0;
+    }
+    if (result == 1) {
+        if (verbose)
+            std::cout << "Reduction failed, no more modules to remove.\n";
+        return 1;
+    }
+    return -1;
+}
+    
 void Reducer::keep_only_net(const int& output_id) {
     if (verbose)
         std::cout << "Reducing netlist to keep only net with ID: " << output_id << "\n";
+
+    netlist.load_from_json(json_data["new"]);
+
+    if (verbose) {
+        std::cout << "Netlist has:" << "\n";
+        netlist.print();
+    }
 
     netlist.remove_other_nets(output_id);
     
@@ -47,15 +77,68 @@ void Reducer::keep_only_net(const int& output_id) {
         std::cout << "After removing other nets, the netlist has:\n";
         netlist.print();
     }
+
+    json_data["new"] = netlist.json();
+}
+
+int Reducer::iterative_reduce(bool success) {
+    if (verbose)
+        std::cout << "Starting iterative reduction of the netlist.\n";
+
+    if (success) {
+        if (verbose)
+            std::cout << "Reducer initialized with last reduction success.\n";
+        netlist.load_from_json(json_data["new"]);
+        json_data["old"] = json_data["new"];
+    } else {
+        if (verbose)
+            std::cout << "Reducer initialized with last reduction failure.\n";
+        netlist.load_from_json(json_data["old"]);
+    }
+
+    if (verbose) {
+        std::cout << "Netlist has:" << "\n";
+        netlist.print();
+    }
+
+    std::set<int> tried_to_remove_net_ids = json_data.value(
+        "tried_to_remove_net_ids", nlohmann::json::array()
+    ).get<std::set<int>>();
+
+    int removed_id = netlist.remove_random_module(
+        [&](const Module* mod) {
+            return !tried_to_remove_net_ids.contains(mod->id) && !mod->is_buffer();
+        }
+    );
+
+    if (removed_id < 0) {
+        if (verbose)
+            std::cout << "No more modules to remove.\n";
+        return 1;
+    }
+
+    if (verbose)
+        std::cout << "Removed module with ID: " << removed_id << "\n";
+
+    tried_to_remove_net_ids.insert(removed_id);
+    netlist.remove_duplicate_outputs();
+    netlist.remove_input_output_chains();
+
+    json_data["new"] = netlist.json();
+
+    json_data["tried_to_remove_net_ids"] = nlohmann::json::array();
+    for (const auto& id : tried_to_remove_net_ids)
+        json_data["tried_to_remove_net_ids"].push_back(id);
+
+    return 0;
 }
 
 void Reducer::write_outputs(const std::string& output) const {
     if (verbose)
         std::cout << "Dumping netlist file to prefix: " << output << "\n";
 
-    nlohmann::json netlist_json = netlist.json();
     std::ofstream json_file(output + ".json");
-    json_file << std::setw(4) << netlist_json << std::endl;
+    json_file << std::setw(4) << json_data << std::endl;
     json_file.close();
     
     std::ofstream dot_file(output + ".dot");

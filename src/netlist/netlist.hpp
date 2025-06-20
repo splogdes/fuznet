@@ -65,6 +65,7 @@ struct Module {
     Module(Id id_, const ModuleSpec& ms, std::mt19937_64& rng);
     Port* get_input(const std::string& name); 
     std::string lable(int width = 0) const;
+    bool is_buffer() const;
 };
 
 struct NetlistStats {
@@ -87,7 +88,11 @@ public:
     void add_undriven_nets(NetType type = NetType::LOGIC, size_t number = 1);
     void drive_undriven_nets(double seq_mod_prob = 0.5, double seq_port_prob = 0.5, bool limit_to_one = false, NetType type = NetType::LOGIC);
     void buffer_unconnected_outputs();
+
     void remove_other_nets(const int& output_id);
+    int  remove_random_module(std::function<bool(const Module*)> filter = nullptr);
+    void remove_duplicate_outputs();
+    void remove_input_output_chains();
 
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
@@ -99,7 +104,7 @@ public:
     NetlistStats get_stats() const;
     
 private:
-    void          add_buffer(Net* net, const ModuleSpec& buffer);
+    void          add_buffer(Net* net, const ModuleSpec& buffer, bool create_output = true);
     Net*          get_random_net(std::function<bool(const Net*)> filter = nullptr) const;
     Net*          make_net(NetType type, const std::string& name = "", int id = -1);
     std::set<int> get_combinational_group(Port* input_port, bool stop_at_seq = true) const;
