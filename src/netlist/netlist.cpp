@@ -619,7 +619,6 @@ void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const 
 
 void Netlist::emit_dotfile(std::ostream& os, const std::string& top) const {
     os << "digraph \"" << top << "\" {\n"
-       << "label=\"" << top << "\";\n"
        << "rankdir=\"LR\";\n"
        << "remincross=true;\n";
 
