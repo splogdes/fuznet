@@ -137,7 +137,7 @@ void Reducer::write_outputs(const std::string& output) const {
     if (verbose)
         std::cout << "Dumping netlist file to prefix: " << output << "\n";
 
-    std::ofstream json_file(output + ".json");
+    std::ofstream json_file(output + ".json", std::ios::trunc);
     json_file << std::setw(4) << json_data << std::endl;
     json_file.close();
     
@@ -166,9 +166,9 @@ void Reducer::write_outputs(const std::string& output) const {
     std::ofstream json_stats(output + "_stats.json");
     json_stats << std::setw(4) << json_data << std::endl;
     json_stats.close();
-    if (verbose) {
+    
+    if (verbose)
         std::cout << "Netlist stats written to: " << output << "_stats.json\n";
-    }
 }
 
 }

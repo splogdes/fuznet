@@ -265,37 +265,67 @@ esac
 
 reduction_out_dir="$OUT_DIR/reduction"
 reduction_log_dir="$reduction_out_dir/logs"
+reduction_success=0
+iteration=0
 
 mkdir -p "$reduction_out_dir"
 mkdir -p "$reduction_log_dir"
 
-if ! time_stage run_reduction "$reduction_out_dir" "$OUT_DIR/$FUZZED_TOP.json" "$LOG_DIR/verilator_run.log" "$FUZZED_TOP" "$reduction_log_dir"; then
-    capture_failed_seed "reduction failed" "rare"
-    RESULT_CATEGORY="reduction_fail"
-    exit 1
-fi
+reduction_src_json="$OUT_DIR/$FUZZED_TOP.json"
 
-# ───── Rerun Vivado on reduced netlist ─────────────────────────────
-if ! time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir"; then
-    capture_failed_seed "reduced netlist Vivado failed" "rare"
-    RESULT_CATEGORY="reduced_vivado_fail"
-    exit 1
-fi
+while true; do
 
-# ───── Rerun Verilator simulation ──────────────────────────────────
-verilator_ret=0
-time_stage run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$reduction_log_dir" || verilator_ret=$?
-if (( verilator_ret == 2 )); then
-    capture_failed_seed "reduced netlist Verilator error" "rare"
-    RESULT_CATEGORY="reduced_verilator_error"
-    exit 1
-fi
+    info "running reduction iteration $iteration"
 
-case "$miter_ret:$verilator_ret" in
-    "1:1") RESULT_CATEGORY="miter_fail_verilator_fail_reduced"    ; capture_failed_seed "Miter failed, Verilator failed, reduction Success"  "epic"      ;;
-    "1:0") RESULT_CATEGORY="miter_fail_verilator_pass_reduced"    ; capture_failed_seed "Miter failed, Verilator passed, reduction Failed"   "rare"      ;;
-    "3:1") RESULT_CATEGORY="miter_timeout_verilator_fail_reduced" ; capture_failed_seed "Miter timeout, Verilator failed, reduction Success" "legendary" ;;
-    "3:0") RESULT_CATEGORY="miter_timeout_verilator_pass_reduced" ; capture_failed_seed "Miter timeout, Verilator passed, reduction Failed"  "rare"      ;;
-esac
+    reduction_ret=0
+    time_stage run_reduction                     \
+                    "$reduction_out_dir"         \
+                    "$reduction_src_json"        \
+                    "$LOG_DIR/verilator_run.log" \
+                    "$reduction_success"         \
+                    "$FUZZED_TOP"                \
+                    "$reduction_log_dir" || reduction_ret=$?
+                
+    reduction_src_json="$reduction_out_dir/$FUZZED_TOP.json"
+    
+    case $reduction_ret in
+        0) ;;
+        1) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction minimized netlist" "legendary"; exit 0 ;;
+        2) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"                ; exit 1 ;;
+    esac
 
-exit 0
+    # ───── Rerun Vivado on reduced netlist ─────────────────────────────
+    vivado_ret=0
+    time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir" || vivado_ret=$?
+
+
+    # ───── check if reduction was successful ───────────────────────────
+    reduction_success=1
+    if (( vivado_ret == 0 )); then
+        miter_ret=0
+        time_stage run_miter "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || miter_ret=$?
+
+        if (( miter_ret != 1 )); then
+            verilator_ret=0
+            time_stage run_verilator "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$LOG_DIR" || verilator_ret=$?
+
+            if (( verilator_ret != 1 )); then
+                reduction_success=0
+            fi
+
+        fi
+    elif (( vivado_ret == 1 )); then
+        RESULT_CATEGORY="vivado_fail_reduced"
+        capture_failed_seed "Vivado failed on reduced netlist" "rare"
+        exit 1
+    elif (( vivado_ret == 3 )); then
+        RESULT_CATEGORY="vivado_timeout_reduced"
+        capture_failed_seed "Vivado timed out on reduced netlist" "rare"
+        exit 1
+    fi
+
+    iteration=$(( iteration + 1 ))
+
+done
+
+exit 1
