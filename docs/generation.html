@@ -14,8 +14,8 @@ var graphviz = d3.select("#graph").graphviz()
     .transition(function () {
         return d3.transition("graphviz")
             .ease(d3.easeLinear)
-            .delay(40)
-            .duration(2000);
+            .delay(60)
+            .duration(3000);
     })
     .on("initEnd", render);
 
