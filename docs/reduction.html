@@ -14,8 +14,8 @@ var graphviz = d3.select("#graph").graphviz()
     .transition(function () {
         return d3.transition("graphviz")
             .ease(d3.easeLinear)
-            .delay(60)
-            .duration(3000);
+            .delay(40)
+            .duration(2000);
     })
     .on("initEnd", render);
 
@@ -26,7 +26,7 @@ function render() {
         .dot(dot)
         .render()
         .on("end", function () {
-            render();
+            setTimeout(render, 2000);
         })
         .zoom(false);
 
