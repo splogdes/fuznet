@@ -141,7 +141,8 @@ void Reducer::write_outputs(const std::string& output) const {
     json_file << std::setw(4) << json_data << std::endl;
     json_file.close();
     
-    std::ofstream dot_file(output + ".dot");
+    int iterations = json_data.value("iterations", 0);
+    std::ofstream dot_file(output + "_iter" + std::to_string(iterations) + ".dot");
     netlist.emit_dotfile(dot_file, "top");
     dot_file.close();
     

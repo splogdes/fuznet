@@ -15,6 +15,7 @@ run_gen() {
                       -s "$SEED"                   \
                       -v                           \
                       -j                           \
+                      -a                           \
                       -o "$out/$fuzed_top"         \
                       >"$log_dir/fuznet.log" 2>&1;
     then
