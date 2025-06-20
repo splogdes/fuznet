@@ -17,8 +17,18 @@ Reducer::Reducer(const std::string& lib_yaml,
        netlist(library, rng),
        json_stats(json_stats),
        verbose(verbose) 
-{       
-    netlist.load_from_json(input_json);
+{
+    std::ifstream json_file(input_json);
+    if (!json_file.is_open()) {
+        std::cerr << "Error: Could not open input JSON file: " << input_json << "\n";
+        throw std::runtime_error("Failed to open input JSON file");
+    }
+    
+    nlohmann::json json_netlist;
+    json_file >> json_netlist;
+    json_file.close();
+
+    netlist.load_from_json(json_netlist);
 
     if (verbose) {
         std::cout << "Loaded netlist from: " << input_json << "\n"
@@ -43,7 +53,10 @@ void Reducer::write_outputs(const std::string& output) const {
     if (verbose)
         std::cout << "Dumping netlist file to prefix: " << output << "\n";
 
-    netlist.emit_json(output + ".json");
+    nlohmann::json netlist_json = netlist.json();
+    std::ofstream json_file(output + ".json");
+    json_file << std::setw(4) << netlist_json << std::endl;
+    json_file.close();
     
     std::ofstream dot_file(output + ".dot");
     netlist.emit_dotfile(dot_file, "top");
@@ -67,9 +80,9 @@ void Reducer::write_outputs(const std::string& output) const {
     json_data["seq_modules"] = stats.seq_modules;
     json_data["total_modules"] = stats.total_modules;
 
-    std::ofstream json_file(output + "_stats.json");
-    json_file << std::setw(4) << json_data << std::endl;
-    json_file.close();
+    std::ofstream json_stats(output + "_stats.json");
+    json_stats << std::setw(4) << json_data << std::endl;
+    json_stats.close();
     if (verbose) {
         std::cout << "Netlist stats written to: " << output << "_stats.json\n";
     }

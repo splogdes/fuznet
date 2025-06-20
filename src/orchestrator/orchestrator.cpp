@@ -133,7 +133,10 @@ void Orchestrator::run(const std::string& output_prefix) {
     
     dump_dot();
 
-    netlist.emit_json(output_prefix + ".json");
+    nlohmann::json netlist_json = netlist.json();
+    std::ofstream json_file(output_prefix + ".json");
+    json_file << std::setw(4) << netlist_json << std::endl;
+    json_file.close();
 
     if(verbose) {
         std::cout << "======== Netlist Generated =========\n";

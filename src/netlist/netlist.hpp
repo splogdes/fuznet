@@ -11,6 +11,7 @@
 #include <map>
 #include <functional>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 using Id = std::size_t;
 
@@ -90,12 +91,12 @@ public:
 
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
-    void emit_json(const std::string& output_file) const;
-    void load_from_json(const std::string& input_file);
+
+    nlohmann::json  json() const;
+    void            load_from_json(const nlohmann::json& json_netlist);
 
     void print(bool only_stats = true) const;
     NetlistStats get_stats() const;
-
     
 private:
     void          add_buffer(Net* net, const ModuleSpec& buffer);

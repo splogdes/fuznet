@@ -8,7 +8,6 @@
 #include <random>
 #include <stdexcept>
 #include <unordered_set>
-#include <nlohmann/json.hpp>
 #include <fstream>
 
 
@@ -578,21 +577,23 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top) const {
     os << "}\n";
 }
 
-void Netlist::emit_json(const std::string& output_file) const {
+nlohmann::json Netlist::json() const {
 
-    nlohmann::json json_data;
+    nlohmann::json json_netlist;
+    json_netlist["version"] = "0.1";
 
-    json_data["nets"] = nlohmann::json::array();
+
+    json_netlist["nets"] = nlohmann::json::array();
     
     for (const auto& net_ptr : nets) {
         nlohmann::json net_json;
         net_json["id"] = net_ptr->id;
         net_json["name"] = net_ptr->name;
         net_json["type"] = static_cast<int>(net_ptr->net_type);
-        json_data["nets"].push_back(net_json);
+        json_netlist["nets"].push_back(net_json);
     }
 
-    json_data["modules"] = nlohmann::json::array();
+    json_netlist["modules"] = nlohmann::json::array();
     for (const auto& module_ptr : modules) {
         nlohmann::json module_json;
         module_json["id"] = module_ptr->id;
@@ -623,29 +624,19 @@ void Netlist::emit_json(const std::string& output_file) const {
             module_json["params"][param.first] = param.second;
         }
 
-        json_data["modules"].push_back(module_json);
+        json_netlist["modules"].push_back(module_json);
 
     }
-    
-    std::ofstream json_file(output_file);
-    json_file << std::setw(4) << json_data << std::endl;
-    json_file.close();
 
+    return json_netlist;
 }
 
-void Netlist::load_from_json(const std::string& input_file) {
-    std::ifstream json_file(input_file);
-    if (!json_file.is_open()) {
-        throw std::runtime_error("Failed to open JSON file: " + input_file);
-    }
-
-    nlohmann::json json_data;
-    json_file >> json_data;
+void Netlist::load_from_json(const nlohmann::json& json_netlist) {
 
     nets.clear();
     modules.clear();
 
-    for (const auto& net_json : json_data["nets"]) {
+    for (const auto& net_json : json_netlist["nets"]) {
         std::string name = net_json.value("name", "");
         int id = net_json.value("id", -1);
         id_counter = std::max(id_counter, id + 1);
@@ -656,7 +647,7 @@ void Netlist::load_from_json(const std::string& input_file) {
         make_net(type, name, id);
     }
 
-    for (const auto& module_json : json_data["modules"]) {
+    for (const auto& module_json : json_netlist["modules"]) {
         int id = module_json.value("id", -1);
         id_counter = std::max(id_counter, id + 1);
         if (id < 0) {
