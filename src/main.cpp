@@ -22,6 +22,8 @@ int main(int argc, char** argv) {
         bool verbose    = false;
         bool show_ver   = false;
         bool json_stats = false;
+        bool last_success = false;
+
 
         app.add_option("-l,--lib",     lib_cfg,      "Cell library YAML");
         app.add_option("-s,--seed",    seed_str,     "Random seed");
@@ -39,7 +41,8 @@ int main(int argc, char** argv) {
         auto reducer_mode = app.add_subcommand("reduce", "Reduce netlist to a single output net");
         reducer_mode->add_option("-i,--input",     json_netlist, "Input JSON netlist")->required();
         reducer_mode->add_option("-o,--output",    out_prefix,   "Output prefix");
-        reducer_mode->add_option("-r,--keep-only", keep_only,    "Keep only this outout net and remove othets")->required();
+        reducer_mode->add_option("-r,--keep-only", keep_only,    "Keep only this outout net and remove othets");
+        reducer_mode->add_flag("--last-success",   last_success, "Flag if the last reduction iteration was a success");
 
 
         CLI11_PARSE(app, argc, argv);
@@ -63,8 +66,13 @@ int main(int argc, char** argv) {
 
         if (*reducer_mode) {
             fuznet::Reducer reducer(lib_cfg, json_netlist, seed, json_stats, verbose);
-            reducer.keep_only_net(keep_only);
+            int return_code = reducer.reduce(keep_only, last_success);
             reducer.write_outputs(out_prefix);
+            
+            if (return_code == 0)
+                return 0;
+            if (return_code == 1)
+                return 2;    
         }
 
     } catch (const std::exception& e) {

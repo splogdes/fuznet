@@ -108,21 +108,20 @@ void Orchestrator::run(const std::string& output_prefix) {
     std::poisson_distribution<int> stop_dist(stop_iter_lambda);
     int iterations = std::min(stop_dist(rng), max_iter);
 
-    std::string dot_path = output_prefix + ".dot";
     std::string verilog_path = output_prefix + ".v";
 
-    auto dump_dot = [&]() {
-        std::ofstream file(dot_path, std::ios::trunc);
+    auto dump_dot = [&](int iter = 0) {
+        std::ofstream file(output_prefix + "_iter" + std::to_string(iter) + ".dot", std::ios::trunc);
         netlist.emit_dotfile(file, "top");
         file.close();
-        if (animate) std::this_thread::sleep_for(1s);
     };
 
     netlist.add_initial_nets();
+    if (animate) dump_dot(0);
 
     for (int i = 0; i < iterations; ++i) {
         commands[weight_dist(rng)].cmd->execute();
-        if (animate) dump_dot();
+        if (animate) dump_dot(i + 1);
     }
     
     netlist.drive_undriven_nets(seq_mod_prob, seq_port_prob);
@@ -131,9 +130,13 @@ void Orchestrator::run(const std::string& output_prefix) {
     std::ofstream v(verilog_path);
     netlist.emit_verilog(v, "top");
     
-    dump_dot();
+    dump_dot(iterations + 1);
 
-    netlist.emit_json(output_prefix + ".json");
+    nlohmann::json json_save;
+    json_save["new"] = netlist.json();
+    std::ofstream json_file(output_prefix + ".json");
+    json_file << std::setw(4) << json_save << std::endl;
+    json_file.close();
 
     if(verbose) {
         std::cout << "======== Netlist Generated =========\n";

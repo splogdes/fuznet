@@ -8,7 +8,6 @@
 #include <random>
 #include <stdexcept>
 #include <unordered_set>
-#include <nlohmann/json.hpp>
 #include <fstream>
 
 
@@ -57,6 +56,19 @@ Port* Module::get_input(const std::string& name) {
         if (input_port->spec.name == name)
             return input_port.get();
     throw std::runtime_error("Input port not found: " + name);
+}
+
+bool Module::is_buffer() const {
+    bool correct_widths  = spec.inputs.size() == 1 
+                        && spec.inputs[0].width == 1 
+                        && spec.outputs.size() == 1 
+                        && spec.outputs[0].width == 1;
+
+    bool correct_type  = spec.inputs[0].net_type == NetType::EXT_IN 
+                      || spec.inputs[0].net_type == NetType::EXT_CLK
+                      || spec.outputs[0].net_type == NetType::EXT_OUT;
+
+    return correct_widths && correct_type;
 }
 
 std::string Module::lable(int width) const {
@@ -187,12 +199,12 @@ void Netlist::buffer_unconnected_outputs() {
         );
 }
 
-void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec) {
-    if (buffer_spec.inputs.size() != 1 || buffer_spec.inputs[0].width != 1 
-        || buffer_spec.outputs.size() != 1 || buffer_spec.outputs[0].width != 1)
-        throw std::invalid_argument("Buffer must have one input and one output");
-
+void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec, bool create_output) {
     auto buffer_module = std::make_unique<Module>(modules.size(), buffer_spec, rng);
+
+    if (!buffer_module->is_buffer())
+        throw std::runtime_error("Module is not a buffer");
+
     Module* module_ptr = buffer_module.get();
     module_ptr->id = get_next_id();
     modules.push_back(std::move(buffer_module));
@@ -203,9 +215,11 @@ void Netlist::add_buffer(Net* drive_net, const ModuleSpec& buffer_spec) {
     input_port->nets[0] = drive_net;
     drive_net->add_sink(input_port, 0);
 
-    Net* new_net = make_net(output_port->net_type);
-    output_port->nets[0]  = new_net;
-    new_net->driver   = PortBit{output_port, 0};
+    if (create_output) {
+        Net* new_net = make_net(output_port->net_type);
+        output_port->nets[0]  = new_net;
+        new_net->driver   = PortBit{output_port, 0};
+    }
 }
 
 Module* Netlist::make_module(const ModuleSpec& spec_ref, bool connect_random, int id) {
@@ -344,6 +358,13 @@ void Netlist::remove_other_nets(const int& output_id) {
         if (net_ptr->name == "clk")
             keep_nets.insert(net_ptr->id);
 
+    for (auto& net_ptr : nets)
+        net_ptr->sinks.erase(
+            std::remove_if(net_ptr->sinks.begin(), net_ptr->sinks.end(),
+                            [&](PortBit pb) { return !keep_modules.contains(pb.port->parent->id); }),
+            net_ptr->sinks.end()
+        );
+        
     modules.erase(
         std::remove_if(modules.begin(), modules.end(),
                        [&](const std::unique_ptr<Module>& m) {
@@ -360,12 +381,6 @@ void Netlist::remove_other_nets(const int& output_id) {
         nets.end()
     );
 
-    for (auto& net_ptr : nets)
-        net_ptr->sinks.erase(
-            std::remove_if(net_ptr->sinks.begin(), net_ptr->sinks.end(),
-                           [&](PortBit pb) { return !keep_modules.contains(pb.port->parent->id); }),
-            net_ptr->sinks.end()
-        );
 
     for (auto& module_ptr : modules) {
         for (auto& port_ptr : module_ptr->inputs)
@@ -386,6 +401,142 @@ void Netlist::remove_other_nets(const int& output_id) {
 
     buffer_unconnected_outputs();
     
+}
+
+int Netlist::remove_random_module(std::function<bool(const Module*)> filter) {
+    std::vector<Module*> candidates;
+
+    for (auto& module : modules)
+        if (!filter || filter(module.get()))
+            candidates.push_back(module.get());
+
+    if (candidates.empty())
+        return -1;
+
+    std::uniform_int_distribution<std::size_t> dist(0, candidates.size() - 1);
+    Module* module_to_remove = candidates[dist(rng)];
+
+    int removed_id = module_to_remove->id;
+
+    for (auto& port : module_to_remove->inputs) {
+        for (int i = 0; i < port->width; ++i) {
+            Net* net = port->nets[i];
+            net->remove_sink(PortBit{port.get(), i});
+            if (net->sinks.empty() && net->net_type == NetType::LOGIC)
+                add_buffer(
+                    net, lib.get_random_buffer(net->net_type, NetType::EXT_OUT)
+                );
+        }
+    }
+
+    for (auto& port : module_to_remove->outputs) {
+        for (int i = 0; i < port->width; ++i) {
+            Net* net = port->nets[i];
+            Net* new_input_net = make_net(NetType::EXT_IN);
+            add_buffer(
+                new_input_net, lib.get_random_buffer(NetType::EXT_IN, NetType::LOGIC), false
+            );
+            Module* module = new_input_net->sinks[0].port->parent;
+            module->outputs[0]->nets[0] = net;
+            net->driver = PortBit{module->outputs[0].get(), 0};
+        }
+    }
+
+    modules.erase(
+        std::remove_if(modules.begin(), modules.end(),
+                       [&](const std::unique_ptr<Module>& m) {
+                           return m.get() == module_to_remove;
+                       }),
+        modules.end()
+    );
+    
+    return removed_id;
+}
+
+void Netlist::remove_duplicate_outputs() {
+    std::set<int> driving_nets;
+    std::vector<Net*> nets_to_remove;
+
+    for (auto& net : nets) {
+        if (net->net_type != NetType::EXT_OUT) continue;
+
+        Module* module = net->driver.port->parent;
+        Net* driving_net = module->inputs[0]->nets[0];
+
+        if (! driving_nets.insert(driving_net->id).second)
+            nets_to_remove.push_back(net.get());
+    }
+
+    for (Net* net : nets_to_remove) {
+        Module* module = net->driver.port->parent;
+        Net* driving_net = module->inputs[0]->nets[0];
+
+        driving_net->remove_sink(PortBit{module->inputs[0].get(), 0});
+
+        nets.erase(
+            std::remove_if(nets.begin(), nets.end(),
+                   [&](const std::unique_ptr<Net>& n) {
+                       return n.get() == net;
+                   }),
+            nets.end()
+        );
+
+        modules.erase(
+            std::remove_if(modules.begin(), modules.end(),
+                   [&](const std::unique_ptr<Module>& m) {
+                       return m.get() == module;
+                   }),
+            modules.end()
+        );
+    }
+}
+
+void Netlist::remove_input_output_chains() {
+    std::vector<Net*> nets_to_remove;
+
+    for (auto& net : nets) {
+        if (net->net_type != NetType::LOGIC || net->sinks.size() != 1)
+            continue;
+
+        if (net->driver.port->parent->is_buffer()
+            && net->sinks[0].port->parent->is_buffer()) {
+                nets_to_remove.push_back(net.get());
+            }
+    }
+
+    for (Net* net : nets_to_remove) {
+        Module* driver_module = net->driver.port->parent;
+        Module* sink_module   = net->sinks[0].port->parent;
+
+        Net* input_net  = driver_module->inputs[0]->nets[0];
+        Net* output_net = sink_module->outputs[0]->nets[0];
+
+        if (output_net->net_type != NetType::EXT_OUT || 
+            input_net->net_type != NetType::EXT_IN) {
+            throw std::runtime_error("Output net must be EXT_OUT and input net must be EXT_IN");
+        }
+
+        nets.erase(
+            std::remove_if(nets.begin(), nets.end(),
+                   [&](const std::unique_ptr<Net>& n) {
+                       return n.get() == net || 
+                              n.get() == input_net || 
+                              n.get() == output_net;
+                   }),
+            nets.end()
+        );
+
+        modules.erase(
+            std::remove_if(modules.begin(), modules.end(),
+                   [&](const std::unique_ptr<Module>& m) {
+                       return m.get() == driver_module || 
+                              m.get() == sink_module;
+                   }),
+            modules.end()
+        );
+    }
+
+    print(false);
 }
 
 void Netlist::emit_verilog(std::ostream& os, const std::string& top_name) const {
@@ -577,21 +728,23 @@ void Netlist::emit_dotfile(std::ostream& os, const std::string& top) const {
     os << "}\n";
 }
 
-void Netlist::emit_json(const std::string& output_file) const {
+nlohmann::json Netlist::json() const {
 
-    nlohmann::json json_data;
+    nlohmann::json json_netlist;
+    json_netlist["version"] = "0.1";
 
-    json_data["nets"] = nlohmann::json::array();
+
+    json_netlist["nets"] = nlohmann::json::array();
     
     for (const auto& net_ptr : nets) {
         nlohmann::json net_json;
         net_json["id"] = net_ptr->id;
         net_json["name"] = net_ptr->name;
         net_json["type"] = static_cast<int>(net_ptr->net_type);
-        json_data["nets"].push_back(net_json);
+        json_netlist["nets"].push_back(net_json);
     }
 
-    json_data["modules"] = nlohmann::json::array();
+    json_netlist["modules"] = nlohmann::json::array();
     for (const auto& module_ptr : modules) {
         nlohmann::json module_json;
         module_json["id"] = module_ptr->id;
@@ -622,29 +775,19 @@ void Netlist::emit_json(const std::string& output_file) const {
             module_json["params"][param.first] = param.second;
         }
 
-        json_data["modules"].push_back(module_json);
+        json_netlist["modules"].push_back(module_json);
 
     }
-    
-    std::ofstream json_file(output_file);
-    json_file << std::setw(4) << json_data << std::endl;
-    json_file.close();
 
+    return json_netlist;
 }
 
-void Netlist::load_from_json(const std::string& input_file) {
-    std::ifstream json_file(input_file);
-    if (!json_file.is_open()) {
-        throw std::runtime_error("Failed to open JSON file: " + input_file);
-    }
-
-    nlohmann::json json_data;
-    json_file >> json_data;
+void Netlist::load_from_json(const nlohmann::json& json_netlist) {
 
     nets.clear();
     modules.clear();
 
-    for (const auto& net_json : json_data["nets"]) {
+    for (const auto& net_json : json_netlist["nets"]) {
         std::string name = net_json.value("name", "");
         int id = net_json.value("id", -1);
         id_counter = std::max(id_counter, id + 1);
@@ -655,7 +798,7 @@ void Netlist::load_from_json(const std::string& input_file) {
         make_net(type, name, id);
     }
 
-    for (const auto& module_json : json_data["modules"]) {
+    for (const auto& module_json : json_netlist["modules"]) {
         int id = module_json.value("id", -1);
         id_counter = std::max(id_counter, id + 1);
         if (id < 0) {
