@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Arguments:  out_dir  fuzzed_netlist_json  verilator_run_log  last_reduction_successful  [fuzzed_top]  [log_dir]
+# Returns:  0 on success, 1 on failure, 2 if no new bugs found, 3 if new bug found
 
 run_reduction() {
     local out=$1
@@ -25,6 +27,7 @@ run_reduction() {
         -o "$out/$fuzzed_top"
         -j
         -v
+        --hash-file "$HASH_FILE"
     )
 
     flags=""
@@ -42,10 +45,13 @@ run_reduction() {
         return 0
     elif (( fuznet_ret == 1 )); then
         info "fuznet reduction failed"
-        return 2
-    elif (( fuznet_ret == 2 )); then
-        info "fuznet no more reductions possible"
         return 1
+    elif (( fuznet_ret == 2 )); then
+        info "fuznet reduction did not find any new bugs"
+        return 2
+    elif (( fuznet_ret == 3 )); then
+        info "fuznet reduction found a new bug"
+        return 3
     fi
 }
                       

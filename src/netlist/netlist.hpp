@@ -94,6 +94,8 @@ public:
     void remove_duplicate_outputs();
     void remove_input_output_chains();
 
+    int get_fingerprint() const;
+
     void emit_verilog(std::ostream& os, const std::string& top_name = "top") const;
     void emit_dotfile(std::ostream& os, const std::string& top_name = "top") const;
 

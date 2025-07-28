@@ -5,7 +5,7 @@
 # External deps: Bash 4, Vivado, Yosys (+smtbmc), Verilator
 #--------------------------------------------------------------------------
 
-set -Eeuo pipefail
+set -euo pipefail
 
 # ───── shared helpers / stage functions ───────────────────────────────────
 source "$(dirname "$0")/../flows/fuzzing/lib.sh"
@@ -49,6 +49,7 @@ export CELL_LIB="$OUT_DIR/$(basename "$CELL_LIB")"
 export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
 export VIVADO_XDC="$OUT_DIR/$(basename "$VIVADO_XDC")"
 export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
+export HASH_FILE="${PERMANENT_LOGS}/seen_netlists.txt"
 
 on_exit() {
     local end_time=$(date +%s%6N)
@@ -180,6 +181,7 @@ capture_failed_seed() {
 sigint_handler() {
     echo "Caught SIGINT or SIGTERM, exiting..."
     rm -rf "$OUT_DIR" 2>/dev/null || true
+    exit 1
 }
 
 trap 'on_exit' EXIT
@@ -290,8 +292,9 @@ while true; do
     
     case $reduction_ret in
         0) ;;
-        1) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction minimized netlist" "legendary"; exit 0 ;;
-        2) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"                ; exit 1 ;;
+        1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"          ; exit 1 ;;
+        2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction now new bug" "legendary"; exit 0 ;;
+        3) RESULT_CATEGORY="reduction_new_bug"   ; capture_failed_seed "reduction found new bug" "unique" ; exit 0 ;;
     esac
 
     # ───── Rerun Vivado on reduced netlist ─────────────────────────────
