@@ -12,6 +12,7 @@ int main(int argc, char** argv) {
 
         std::string lib_cfg      = "hardware/xilinx/cells.yaml";
         std::string settings_cfg = "config/settings.toml";
+        std::string hash_file    = "output/seen_netlists.txt";
         std::string out_prefix   = "output/output";
         std::string seed_str     = std::to_string(std::random_device{}());
 
@@ -40,6 +41,7 @@ int main(int argc, char** argv) {
         
         auto reducer_mode = app.add_subcommand("reduce", "Reduce netlist to a single output net");
         reducer_mode->add_option("-i,--input",     json_netlist, "Input JSON netlist")->required();
+        reducer_mode->add_option("--hash-file",    hash_file, "File to store seen netlists hashes")->required();
         reducer_mode->add_option("-o,--output",    out_prefix,   "Output prefix");
         reducer_mode->add_option("-r,--keep-only", keep_only,    "Keep only this outout net and remove othets");
         reducer_mode->add_flag("--last-success",   last_success, "Flag if the last reduction iteration was a success");
@@ -65,14 +67,25 @@ int main(int argc, char** argv) {
         }
 
         if (*reducer_mode) {
-            fuznet::Reducer reducer(lib_cfg, json_netlist, seed, json_stats, verbose);
-            int return_code = reducer.reduce(keep_only, last_success);
+            fuznet::Reducer reducer(lib_cfg, json_netlist, hash_file, seed, json_stats, verbose);
+            fuznet::Result result = reducer.reduce(keep_only, last_success);
             reducer.write_outputs(out_prefix);
             
-            if (return_code == 0)
-                return 0;
-            if (return_code == 1)
-                return 2;    
+            switch (result) {
+                case fuznet::Result::SUCCESS:
+                    std::cout << "Reduction successful.\n";
+                    return 0;
+                case fuznet::Result::FAILURE:
+                    std::cout << "Reduction failed.\n";
+                    return 1;
+                case fuznet::Result::ALREADY_SEEN:
+                    std::cout << "Netlist already seen, skipping reduction.\n";
+                    return 2;
+                case fuznet::Result::NEW_HASH_ADDED:
+                    std::cout << "New netlist hash added to the file.\n";
+                    return 3;
+            }
+                
         }
 
     } catch (const std::exception& e) {

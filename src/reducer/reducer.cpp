@@ -7,11 +7,13 @@
 namespace fuznet {
 
 Reducer::Reducer(const std::string& lib_yaml,
-              const std::string& input_json,
-              unsigned seed,
-              bool json_stats,
-              bool verbose)
-     : rng(seed),
+                 const std::string& input_json,
+                 const std::string& hash_file,
+                 unsigned seed,
+                 bool json_stats,
+                 bool verbose)
+     : hash_file(hash_file),
+       rng(seed),
        library(lib_yaml, rng), 
        netlist(library, rng),
        json_stats(json_stats),
@@ -27,7 +29,7 @@ Reducer::Reducer(const std::string& lib_yaml,
     json_file.close();
 }
 
-int Reducer::reduce(const int& output_id, bool success) {
+Result Reducer::reduce(const int& output_id, bool success) {
     if (verbose)
         std::cout << "Starting reduction process.\n";
 
@@ -39,25 +41,13 @@ int Reducer::reduce(const int& output_id, bool success) {
 
     if (output_id >= 0 && iterations == 0) {
         keep_only_net(output_id);
-        return 0;
+        return Result::SUCCESS;
     }
 
     if (verbose)
         std::cout << "Iterative reduction started with last success: " << success << "\n";
     
-    int result = iterative_reduce(success);
-
-    if (result == 0) {
-        if (verbose)
-            std::cout << "Reduction completed successfully.\n";
-        return 0;
-    }
-    if (result == 1) {
-        if (verbose)
-            std::cout << "Reduction failed, no more modules to remove.\n";
-        return 1;
-    }
-    return -1;
+    return iterative_reduce(success);
 }
     
 void Reducer::keep_only_net(const int& output_id) {
@@ -81,7 +71,7 @@ void Reducer::keep_only_net(const int& output_id) {
     json_data["new"] = netlist.json();
 }
 
-int Reducer::iterative_reduce(bool success) {
+Result Reducer::iterative_reduce(bool success) {
     if (verbose)
         std::cout << "Starting iterative reduction of the netlist.\n";
 
@@ -114,7 +104,7 @@ int Reducer::iterative_reduce(bool success) {
     if (removed_id < 0) {
         if (verbose)
             std::cout << "No more modules to remove.\n";
-        return 1;
+        return check_hash();
     }
 
     if (verbose)
@@ -130,7 +120,7 @@ int Reducer::iterative_reduce(bool success) {
     for (const auto& id : tried_to_remove_net_ids)
         json_data["tried_to_remove_net_ids"].push_back(id);
 
-    return 0;
+    return Result::SUCCESS;
 }
 
 void Reducer::write_outputs(const std::string& output) const {
@@ -170,6 +160,54 @@ void Reducer::write_outputs(const std::string& output) const {
     
     if (verbose)
         std::cout << "Netlist stats written to: " << output << "_stats.json\n";
+}
+
+Result Reducer::check_hash() const {
+    if (verbose)
+        std::cout << "Checking hash for the current netlist.\n";
+
+    if (!std::filesystem::exists(hash_file)) {
+        std::ofstream new_hash_file(hash_file);
+        if (!new_hash_file.is_open()) {
+            std::cerr << "Error: Could not create hash file: " << hash_file << "\n";
+            return Result::FAILURE;
+        }
+        new_hash_file.close();
+    }
+    
+    std::ifstream hash_file_stream(hash_file);
+    if (!hash_file_stream.is_open()) {
+        std::cerr << "Error: Could not open hash file: " << hash_file << "\n";
+        return Result::FAILURE;
+    }
+
+    std::set<std::string> seen_hashes;
+    std::string line;
+    while (std::getline(hash_file_stream, line)) {
+        seen_hashes.insert(line);
+    }
+    hash_file_stream.close();
+
+    int fingerprint = netlist.get_fingerprint();
+    std::string current_hash = std::to_string(fingerprint);
+
+    std::cout << "Current netlist fingerprint: " << current_hash << "\n";
+
+    if (seen_hashes.contains(current_hash)) {
+        std::cout << "Netlist already seen\n";
+        return Result::ALREADY_SEEN;
+    }
+
+    std::ofstream hash_file_out(hash_file, std::ios::app);
+    if (!hash_file_out.is_open()) {
+        std::cerr << "Error: Could not open hash file for writing: " << hash_file << "\n";
+        return Result::FAILURE;
+    }
+    hash_file_out << current_hash << "\n";
+    hash_file_out.close();
+
+    std::cout << "New netlist hash added to the file.\n";
+    return Result::NEW_HASH_ADDED;
 }
 
 }

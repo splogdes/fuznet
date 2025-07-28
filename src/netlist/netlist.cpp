@@ -59,14 +59,18 @@ Port* Module::get_input(const std::string& name) {
 }
 
 bool Module::is_buffer() const {
-    bool correct_widths  = spec.inputs.size() == 1 
-                        && spec.inputs[0].width == 1 
-                        && spec.outputs.size() == 1 
-                        && spec.outputs[0].width == 1;
+    bool correct_widths  = false;
+    bool correct_type = false;
 
-    bool correct_type  = spec.inputs[0].net_type == NetType::EXT_IN 
-                      || spec.inputs[0].net_type == NetType::EXT_CLK
-                      || spec.outputs[0].net_type == NetType::EXT_OUT;
+    if ((spec.inputs.size() == 1) && (spec.outputs.size() == 1)) {
+        correct_widths = spec.inputs[0].width == 1 
+                      && spec.outputs[0].width == 1;
+                      
+        correct_type  = spec.inputs[0].net_type == NetType::EXT_IN 
+                        || spec.inputs[0].net_type == NetType::EXT_CLK
+                        || spec.outputs[0].net_type == NetType::EXT_OUT;
+    }
+
 
     return correct_widths && correct_type;
 }
@@ -902,4 +906,24 @@ NetlistStats Netlist::get_stats() const {
     stats.total_modules = static_cast<int>(modules.size());
 
     return stats;
+}
+
+int Netlist::get_fingerprint() const {
+    std::map<std::string, int> net_type_count;
+    
+    for (const auto& module_ptr : modules) {
+        if (!module_ptr->is_buffer()) {
+            const std::string& name = module_ptr->spec.name;
+            net_type_count[name]++;
+        }
+    }
+
+    std::ostringstream oss;
+    for (const auto& [name, count] : net_type_count) {
+        oss << name << ":" << count << ";";
+    }
+
+    std::hash<std::string> hasher;
+
+    return static_cast<int>(hasher(oss.str()) % std::numeric_limits<int>::max());
 }
