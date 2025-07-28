@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Arguments:  out_dir  fuzzed_netlist_json  verilator_run_log  last_reduction_successful  [fuzzed_top]  [log_dir]
+# Returns:  0 on success, 1 on failure, 2 if no new bugs found, 3 if new bug found
 
 run_reduction() {
     local out=$1
