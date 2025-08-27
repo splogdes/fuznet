@@ -302,13 +302,13 @@ while true; do
         1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"          ; exit 1 ;;
         2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction now new bug" "legendary"; exit 0 ;;
         3)  if [[ -n $wns ]]; then
-                clk_period=$(( clk_period - 0.25 - wns ))
+                clk_period=$(awk -v c="$clk_period" -v w="$wns" 'BEGIN{print c - 0.25 - w}')
                 reset=1
-            else if (( reduced_netlist_size < 10 )); then
+            elif (( reduced_netlist_size < 10 )); then
                 RESULT_CATEGORY="reduction_new_bug_small"
                 capture_failed_seed "reduction found new bug" "unique_small"
                 exit 0
-            else if (( reduced_netlist_size < 20 )); then
+            elif (( reduced_netlist_size < 20 )); then
                 RESULT_CATEGORY="reduction_new_bug_medium"
                 capture_failed_seed "reduction found new bug" "unique_medium"
                 exit 0
