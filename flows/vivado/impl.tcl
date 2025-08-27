@@ -5,14 +5,15 @@ set synth_top [lindex $argv 1]
 set impl_top  [lindex $argv 2]
 set fuzz_top [lindex $argv 3]
 set netlist [lindex $argv 4]
-set constraints [lindex $argv 5]
+set clk_period [lindex $argv 5]
 
 # Load Verilog netlist
 read_verilog $netlist
-read_xdc $constraints
 
 # Open (link) the design — must be after reading Verilog
 link_design -part $part -top $fuzz_top
+
+create_clock -name clk -period $clk_period [get_ports clk]
 
 write_verilog -rename_top $synth_top -force -mode funcsim $out_dir/$synth_top\.v
 
@@ -27,10 +28,7 @@ power_opt_design
 route_design
 phys_opt_design
 
-# Export outputs
 write_verilog -rename_top $impl_top -force -mode funcsim $out_dir/$impl_top\.v
-# write_sdf     -force              netlist/post_impl.sdf
-# write_xdc     -no_fixed_only -exclude_timing -add_netlist_placement \
-#                -force netlist/impl_placement.xdc
+
 
 quit

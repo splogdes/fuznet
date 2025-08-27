@@ -44,10 +44,9 @@ PERMANENT_LOGS=${PERMANENT_LOGS:-logs}
 # ───── result bookkeeping & traps ─────────────────────────────────────────
 RESULT_CATEGORY=""
 
-cp $CELL_LIB $VIVADO_TCL $VIVADO_XDC $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
+cp $CELL_LIB $VIVADO_TCL $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
 export CELL_LIB="$OUT_DIR/$(basename "$CELL_LIB")"
 export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
-export VIVADO_XDC="$OUT_DIR/$(basename "$VIVADO_XDC")"
 export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
 export HASH_FILE="${PERMANENT_LOGS}/seen_netlists.txt"
 
@@ -148,7 +147,7 @@ EOF
     echo "$result_line" >> "$results_csv"
 
 
-    rm -rf "$OUT_DIR" || true
+    # rm -rf "$OUT_DIR" || true
 }
 
 time_stage() {
@@ -180,7 +179,7 @@ capture_failed_seed() {
 
 sigint_handler() {
     echo "Caught SIGINT or SIGTERM, exiting..."
-    rm -rf "$OUT_DIR" 2>/dev/null || true
+    # rm -rf "$OUT_DIR" 2>/dev/null || true
     exit 1
 }
 
@@ -203,7 +202,8 @@ if ! time_stage run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
 fi
 # ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
-time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
+clk_period=10.000
+time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$clk_period" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
 case $impl_ret in
     0) ;;
     1) RESULT_CATEGORY="vivado_fail" ; exit 1 ;;
@@ -268,6 +268,7 @@ esac
 reduction_out_dir="$OUT_DIR/reduction"
 reduction_log_dir="$reduction_out_dir/logs"
 reduction_success=0
+reset=0
 iteration=0
 
 mkdir -p "$reduction_out_dir"
@@ -285,21 +286,33 @@ while true; do
                     "$reduction_src_json"        \
                     "$LOG_DIR/verilator_run.log" \
                     "$reduction_success"         \
+                    "$reset"                     \
                     "$FUZZED_TOP"                \
                     "$reduction_log_dir" || reduction_ret=$?
+    reset=0
                 
     reduction_src_json="$reduction_out_dir/$FUZZED_TOP.json"
-    
+
+    wns=$(scripts/get_wns_before_marker.py "$LOG_DIR/vivado.log")
+
     case $reduction_ret in
         0) ;;
         1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"          ; exit 1 ;;
         2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction now new bug" "legendary"; exit 0 ;;
-        3) RESULT_CATEGORY="reduction_new_bug"   ; capture_failed_seed "reduction found new bug" "unique" ; exit 0 ;;
+        3)  if [[ -n $wns ]]; then
+                clk_period=$(( clk_period - 0.25 - wns ))
+                reset=1
+            else
+                RESULT_CATEGORY="reduction_new_bug"
+                capture_failed_seed "reduction found new bug" "unique"
+                exit 0
+            fi
+            ;;
     esac
 
     # ───── Rerun Vivado on reduced netlist ─────────────────────────────
     vivado_ret=0
-    time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir" || vivado_ret=$?
+    time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$clk_period" "$FUZZED_TOP" "$reduction_log_dir" || vivado_ret=$?
 
 
     # ───── check if reduction was successful ───────────────────────────
@@ -328,6 +341,12 @@ while true; do
     fi
 
     iteration=$(( iteration + 1 ))
+
+    if (( iteration >= MAX_REDUCTION_ITER )); then
+        RESULT_CATEGORY="reduction_max_iter"
+        capture_failed_seed "reduction reached max iterations" "rare"
+        exit 1
+    fi
 
 done
 

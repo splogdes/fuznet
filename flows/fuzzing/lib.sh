@@ -13,7 +13,7 @@ export PRIMS_V=${PRIMS_V:-hardware/xilinx/cell_sim.v}
 
 export VIVADO_BIN=${VIVADO_BIN:-/opt/Xilinx/Vivado/2024.2/bin/vivado}
 export VIVADO_TCL=${VIVADO_TCL:-flows/vivado/impl.tcl}
-export VIVADO_XDC=${VIVADO_XDC:-flows/vivado/constraints.xdc}
+export MAX_REDUCTION_ITER=${MAX_REDUCTION_ITER:-100}
 
 export CELL_LIB=${CELL_LIB:-hardware/xilinx/cells.yaml}
 

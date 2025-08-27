@@ -45,13 +45,11 @@ def main():
             with open(args.logfile, "r", encoding="utf-8", errors="ignore") as f:
                 wns = get_wns_before_marker(f)
         except FileNotFoundError:
-            print(f"Error: file not found: {args.logfile}", file=sys.stderr)
-            sys.exit(2)
+            sys.exit(1)
     else:
         wns = get_wns_before_marker(sys.stdin)
 
     if wns is None:
-        print("Error: Could not find a WNS value before the target message.", file=sys.stderr)
         sys.exit(1)
 
     print(wns)

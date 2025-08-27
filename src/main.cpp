@@ -19,11 +19,12 @@ int main(int argc, char** argv) {
         std::string json_netlist = "output/output_netlist.json";
         int         keep_only    = -1;
 
-        bool animate    = false;
-        bool verbose    = false;
-        bool show_ver   = false;
-        bool json_stats = false;
+        bool animate      = false;
+        bool verbose      = false;
+        bool show_ver     = false;
+        bool json_stats   = false;
         bool last_success = false;
+        bool reset        = false;
 
 
         app.add_option("-l,--lib",     lib_cfg,      "Cell library YAML");
@@ -41,10 +42,11 @@ int main(int argc, char** argv) {
         
         auto reducer_mode = app.add_subcommand("reduce", "Reduce netlist to a single output net");
         reducer_mode->add_option("-i,--input",     json_netlist, "Input JSON netlist")->required();
-        reducer_mode->add_option("--hash-file",    hash_file, "File to store seen netlists hashes")->required();
+        reducer_mode->add_option("--hash-file",    hash_file,    "File to store seen netlists hashes")->required();
         reducer_mode->add_option("-o,--output",    out_prefix,   "Output prefix");
         reducer_mode->add_option("-r,--keep-only", keep_only,    "Keep only this outout net and remove othets");
-        reducer_mode->add_flag("--last-success",   last_success, "Flag if the last reduction iteration was a success");
+        reducer_mode->add_flag  ("--last-success", last_success, "Flag if the last reduction iteration was a success");
+        reducer_mode->add_flag  ("--reset",        reset,        "Reset the trialed primitives history");
 
 
         CLI11_PARSE(app, argc, argv);
@@ -68,7 +70,7 @@ int main(int argc, char** argv) {
 
         if (*reducer_mode) {
             fuznet::Reducer reducer(lib_cfg, json_netlist, hash_file, seed, json_stats, verbose);
-            fuznet::Result result = reducer.reduce(keep_only, last_success);
+            fuznet::Result result = reducer.reduce(keep_only, last_success, reset);
             reducer.write_outputs(out_prefix);
             
             switch (result) {
