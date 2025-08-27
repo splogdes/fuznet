@@ -301,7 +301,6 @@ while true; do
         2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction now new bug" "legendary"; exit 0 ;;
         3)  if [[ -n $wns ]]; then
                 clk_period=$(( clk_period - 0.25 - wns ))
-                info "Changing clk period to $clk_period"
                 reset=1
             else
                 RESULT_CATEGORY="reduction_new_bug"
