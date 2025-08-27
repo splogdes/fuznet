@@ -147,7 +147,7 @@ EOF
     echo "$result_line" >> "$results_csv"
 
 
-    # rm -rf "$OUT_DIR" || true
+    rm -rf "$OUT_DIR" || true
 }
 
 time_stage() {
@@ -179,7 +179,7 @@ capture_failed_seed() {
 
 sigint_handler() {
     echo "Caught SIGINT or SIGTERM, exiting..."
-    # rm -rf "$OUT_DIR" 2>/dev/null || true
+    rm -rf "$OUT_DIR" 2>/dev/null || true
     exit 1
 }
 
