@@ -10,7 +10,7 @@ run_impl() {
     local fuzed_top=${5:-"fuzzed_netlist"}
     local log_dir=${6:-"$out/logs"}
 
-    info "Running Vivado implementation for $fuzed_top with clk period $clk_period"
+    info "Running Vivado implementation for $fuzed_top with clk period $clk_period ns"
     local vivado_ret=0
     timeout 600 "$VIVADO_BIN" -mode batch          \
                   -log "$log_dir/vivado.log"       \

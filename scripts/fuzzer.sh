@@ -294,6 +294,8 @@ while true; do
     reduction_src_json="$reduction_out_dir/$FUZZED_TOP.json"
 
     wns=$(scripts/get_wns_before_marker.py "$LOG_DIR/vivado.log")
+    reduced_netlist_size=$(jq '.total_modules' "$reduction_src_json")
+    info "reduced netlist size: $reduced_netlist_size modules"
 
     case $reduction_ret in
         0) ;;
@@ -302,9 +304,17 @@ while true; do
         3)  if [[ -n $wns ]]; then
                 clk_period=$(( clk_period - 0.25 - wns ))
                 reset=1
+            else if (( reduced_netlist_size < 10 )); then
+                RESULT_CATEGORY="reduction_new_bug_small"
+                capture_failed_seed "reduction found new bug" "unique_small"
+                exit 0
+            else if (( reduced_netlist_size < 20 )); then
+                RESULT_CATEGORY="reduction_new_bug_medium"
+                capture_failed_seed "reduction found new bug" "unique_medium"
+                exit 0
             else
-                RESULT_CATEGORY="reduction_new_bug"
-                capture_failed_seed "reduction found new bug" "unique"
+                RESULT_CATEGORY="reduction_new_bug_large"
+                capture_failed_seed "reduction found new bug" "unique_large"
                 exit 0
             fi
             ;;
