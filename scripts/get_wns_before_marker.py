@@ -50,7 +50,7 @@ def main():
         wns = get_wns_before_marker(sys.stdin)
 
     if wns is None:
-        sys.exit(1)
+        sys.exit(0)
 
     print(wns)
 
