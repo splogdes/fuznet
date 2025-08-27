@@ -299,7 +299,7 @@ while true; do
     reduction_src_json="$reduction_out_dir/$FUZZED_TOP.json"
 
     wns=$(scripts/get_wns_before_marker.py "$LOG_DIR/vivado.log")
-    reduced_netlist_size=$(jq '.total_modules' "$reduction_src_json")
+    reduced_netlist_size=$(jq '.total_modules' "$reduction_out_dir/${FUZZED_TOP}_stats.json")
     info "reduced netlist size: $reduced_netlist_size modules"
 
     case $reduction_ret in
