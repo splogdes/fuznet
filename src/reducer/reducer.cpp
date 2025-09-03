@@ -29,7 +29,7 @@ Reducer::Reducer(const std::string& lib_yaml,
     json_file.close();
 }
 
-Result Reducer::reduce(const int& output_id, bool success) {
+Result Reducer::reduce(const int& output_id, bool success, bool reset) {
     if (verbose)
         std::cout << "Starting reduction process.\n";
 
@@ -45,9 +45,9 @@ Result Reducer::reduce(const int& output_id, bool success) {
     }
 
     if (verbose)
-        std::cout << "Iterative reduction started with last success: " << success << "\n";
+        std::cout << "Iterative reduction started with last success: " << success << " and reset: " << reset << "\n";
     
-    return iterative_reduce(success);
+    return iterative_reduce(success, reset);
 }
     
 void Reducer::keep_only_net(const int& output_id) {
@@ -71,9 +71,12 @@ void Reducer::keep_only_net(const int& output_id) {
     json_data["new"] = netlist.json();
 }
 
-Result Reducer::iterative_reduce(bool success) {
+Result Reducer::iterative_reduce(bool success, bool reset) {
     if (verbose)
         std::cout << "Starting iterative reduction of the netlist.\n";
+
+    if (reset)
+        json_data["tried_to_remove_net_ids"] = nlohmann::json::array();
 
     if (success) {
         if (verbose)

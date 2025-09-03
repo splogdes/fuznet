@@ -27,6 +27,8 @@ FUZZED_TOP="fuzzed_netlist"       # basename (no .v)
 
 USE_SMTBMC=${USE_SMTBMC:-0}       # 1 → run BMC + induction
 
+clk_period=${CLK_PERIOD:-10.000}  # initial clock period constraint (ns)
+
 # ───── directory scaffolding ──────────────────────────────────────────────
 
 EPOCH_START=$(date +%s%6N)
@@ -44,10 +46,9 @@ PERMANENT_LOGS=${PERMANENT_LOGS:-logs}
 # ───── result bookkeeping & traps ─────────────────────────────────────────
 RESULT_CATEGORY=""
 
-cp $CELL_LIB $VIVADO_TCL $VIVADO_XDC $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
+cp $CELL_LIB $VIVADO_TCL $SETTINGS_TOML "$OUT_DIR/" 2>/dev/null || true
 export CELL_LIB="$OUT_DIR/$(basename "$CELL_LIB")"
 export VIVADO_TCL="$OUT_DIR/$(basename "$VIVADO_TCL")"
-export VIVADO_XDC="$OUT_DIR/$(basename "$VIVADO_XDC")"
 export SETTINGS_TOML="$OUT_DIR/$(basename "$SETTINGS_TOML")"
 export HASH_FILE="${PERMANENT_LOGS}/seen_netlists.txt"
 
@@ -70,10 +71,10 @@ on_exit() {
 timestamp,worker,seed,category,runtime_micro,\
 gen_micro,impl_micro,struct_micro,miter_micro,\
 verilator_micro,z3_bmc_micro,z3_induct_micro,\
-reduction_micro,impl_reduced_micro,verilator_reduced,\
+reduction_micro,impl_reduced_micro,verilator_reduced,clk_period,\
 input_nets,output_nets,total_nets,comb_modules,seq_modules,total_modules,\
 input_nets_reduced,output_nets_reduced,total_nets_reduced,\
-comb_modules_reduced,seq_modules_reduced,total_modules_reduced,\
+comb_modules_reduced,seq_modules_reduced,total_modules_reduced,reduction_iterations,\
 max_iter,stop_iter_lambda,start_input_lambda,start_undriven_lambda,\
 seq_mod_prob,seq_port_prob,AddRandomModule,AddExternalNet,\
 AddUndriveNet,DriveUndrivenNet,DriveUndrivenNets,BufferUnconnectedOutputs,$vivado_stats_header
@@ -131,12 +132,16 @@ EOF
         "${STAGE_TIMES[run_z3_induct]:-NA}" "${STAGE_TIMES[run_reduction_reduced]:-NA}" \
         "${STAGE_TIMES[run_impl_reduced]:-NA}" "${STAGE_TIMES[run_verilator_reduced]:-NA}")
 
+    result_line+=$(printf "%s," "$clk_period")
+
     result_line+=$(printf "%s,%s,%s,%s,%s,%s," \
         "$in_nets" "$output_nets" "$total_nets" "$comb_mods" "$seq_mods" "$total_mods")
 
     result_line+=$(printf "%s,%s,%s,%s,%s,%s," \
         "$in_nets_reduced" "$output_nets_reduced" "$total_nets_reduced" \
         "$comb_mods_reduced" "$seq_mods_reduced" "$total_mods_reduced")
+
+    result_line+=$(printf "%s," "${reduction_iterations:-0}")
 
     result_line+=$(printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s," \
         "$max_iter" "$stop_iter_lambda" "$start_input_lambda" "$start_undriven_lambda" \
@@ -203,7 +208,7 @@ if ! time_stage run_gen "$OUT_DIR" "$FUZZED_TOP" "$LOG_DIR"; then
 fi
 # ───── stage 20 – Vivado PnR ──────────────────────────────────
 impl_ret=0
-time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
+time_stage run_impl "$OUT_DIR" "$SYNTH_TOP" "$IMPL_TOP" "$clk_period" "$FUZZED_TOP" "$LOG_DIR" || impl_ret=$?
 case $impl_ret in
     0) ;;
     1) RESULT_CATEGORY="vivado_fail" ; exit 1 ;;
@@ -268,7 +273,8 @@ esac
 reduction_out_dir="$OUT_DIR/reduction"
 reduction_log_dir="$reduction_out_dir/logs"
 reduction_success=0
-iteration=0
+reset=0
+reduction_iterations=0
 
 mkdir -p "$reduction_out_dir"
 mkdir -p "$reduction_log_dir"
@@ -277,7 +283,7 @@ reduction_src_json="$OUT_DIR/$FUZZED_TOP.json"
 
 while true; do
 
-    info "running reduction iteration $iteration"
+    info "running reduction reduction_iterations $reduction_iterations"
 
     reduction_ret=0
     time_stage run_reduction                     \
@@ -285,21 +291,43 @@ while true; do
                     "$reduction_src_json"        \
                     "$LOG_DIR/verilator_run.log" \
                     "$reduction_success"         \
+                    "$reset"                     \
                     "$FUZZED_TOP"                \
                     "$reduction_log_dir" || reduction_ret=$?
+    reset=0
                 
     reduction_src_json="$reduction_out_dir/$FUZZED_TOP.json"
-    
+
+    wns=$(scripts/get_wns_before_marker.py "$LOG_DIR/vivado.log")
+    reduced_netlist_size=$(jq '.total_modules' "$reduction_out_dir/${FUZZED_TOP}_stats.json")
+    info "reduced netlist size: $reduced_netlist_size modules"
+
     case $reduction_ret in
         0) ;;
-        1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"          ; exit 1 ;;
-        2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction now new bug" "legendary"; exit 0 ;;
-        3) RESULT_CATEGORY="reduction_new_bug"   ; capture_failed_seed "reduction found new bug" "unique" ; exit 0 ;;
+        1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"         ; exit 1 ;;
+        2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction no new bug" "legendary"; exit 0 ;;
+        3)  if [[ -n $wns ]]; then
+                clk_period=$(awk -v c="$clk_period" -v w="$wns" 'BEGIN{print c - 0.25 - w}')
+                reset=1
+            elif (( reduced_netlist_size < 10 )); then
+                RESULT_CATEGORY="reduction_new_bug_small"
+                capture_failed_seed "reduction found new bug" "unique_small"
+                exit 0
+            elif (( reduced_netlist_size < 20 )); then
+                RESULT_CATEGORY="reduction_new_bug_medium"
+                capture_failed_seed "reduction found new bug" "unique_medium"
+                exit 0
+            else
+                RESULT_CATEGORY="reduction_new_bug_large"
+                capture_failed_seed "reduction found new bug" "unique_large"
+                exit 0
+            fi
+            ;;
     esac
 
     # ───── Rerun Vivado on reduced netlist ─────────────────────────────
     vivado_ret=0
-    time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$FUZZED_TOP" "$reduction_log_dir" || vivado_ret=$?
+    time_stage run_impl "$reduction_out_dir" "$SYNTH_TOP" "$IMPL_TOP" "$clk_period" "$FUZZED_TOP" "$reduction_log_dir" || vivado_ret=$?
 
 
     # ───── check if reduction was successful ───────────────────────────
@@ -327,7 +355,13 @@ while true; do
         exit 1
     fi
 
-    iteration=$(( iteration + 1 ))
+    reduction_iterations=$(( reduction_iterations + 1 ))
+
+    if (( reduction_iterations >= MAX_REDUCTION_ITER )); then
+        RESULT_CATEGORY="reduction_max_iter"
+        capture_failed_seed "reduction reached max reduction_iterationss" "rare"
+        exit 1
+    fi
 
 done
 

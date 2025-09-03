@@ -7,8 +7,9 @@ run_reduction() {
     local fuzzed_netlist_json=$2
     local verilator_run_log=$3
     local last_reduction_successful=$4
-    local fuzzed_top=${5:-"fuznet_netlist"}
-    local log_dir=${6:-"$out/logs"}
+    local reset=$5
+    local fuzzed_top=${6:-"fuznet_netlist"}
+    local log_dir=${7:-"$out/logs"}
 
     mkdir -p "$log_dir"
     info "Running netlist reduction on $fuzzed_netlist_json"
@@ -33,6 +34,9 @@ run_reduction() {
     flags=""
     if (( last_reduction_successful )); then
         args+=("--last-success")
+    fi
+    if (( reset )); then
+        args+=("--reset")
     fi
 
     fuznet_ret=0

@@ -26,11 +26,11 @@ public:
             bool               verbose       = false);
 
     void write_outputs(const std::string& output_json) const;
-    Result reduce(const int& output_id, bool success = true);
+    Result reduce(const int& output_id, bool success = true, bool reset = false);
     
 private:
     
-    Result  iterative_reduce(bool success);
+    Result  iterative_reduce(bool success, bool reset);
     void    keep_only_net(const int& output_id);
     Result  check_hash() const;
 
