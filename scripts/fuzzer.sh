@@ -304,8 +304,8 @@ while true; do
 
     case $reduction_ret in
         0) ;;
-        1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"          ; exit 1 ;;
-        2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction now new bug" "legendary"; exit 0 ;;
+        1) RESULT_CATEGORY="reduction_fail"      ; capture_failed_seed "reduction failed" "rare"         ; exit 1 ;;
+        2) RESULT_CATEGORY="reduction_minimized" ; capture_failed_seed "reduction no new bug" "legendary"; exit 0 ;;
         3)  if [[ -n $wns ]]; then
                 clk_period=$(awk -v c="$clk_period" -v w="$wns" 'BEGIN{print c - 0.25 - w}')
                 reset=1
