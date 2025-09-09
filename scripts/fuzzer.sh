@@ -41,7 +41,7 @@ OUT_DIR=${OUT_DIR:-"tmp-${STAMP}-${SEED_HEX}-w${WORKER_ID}"}
 LOG_DIR="$OUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
-PERMANENT_LOGS=${PERMANENT_LOGS:-logs}
+PERMANENT_LOGS=$(grep -m1 -E '^[[:space:]]*folder[[:space:]]*=' config/settings.toml | awk -F= '{sub(/^[ \t]+/,"",$2); sub(/[ \t]+$/,"",$2); gsub(/^"|"$/,"",$2); print $2}')
 
 # ───── result bookkeeping & traps ─────────────────────────────────────────
 RESULT_CATEGORY=""
@@ -309,11 +309,11 @@ while true; do
         3)  if [[ -n $wns ]]; then
                 clk_period=$(awk -v c="$clk_period" -v w="$wns" 'BEGIN{print c - 0.25 - w}')
                 reset=1
-            elif (( reduced_netlist_size < 10 )); then
+            elif (( reduced_netlist_size < 20 )); then
                 RESULT_CATEGORY="reduction_new_bug_small"
                 capture_failed_seed "reduction found new bug" "unique_small"
                 exit 0
-            elif (( reduced_netlist_size < 20 )); then
+            elif (( reduced_netlist_size < 40 )); then
                 RESULT_CATEGORY="reduction_new_bug_medium"
                 capture_failed_seed "reduction found new bug" "unique_medium"
                 exit 0

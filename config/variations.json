@@ -1,0 +1,42 @@
+{
+  "settings.stop_iter_lambda": [
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100
+  ],
+  "settings.prob_sequential_port": [
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    0.9
+  ],
+  "settings.prob_sequential_module": [
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    0.9
+  ],
+  "settings.start_input_lambda": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ],
+  "settings.start_undriven_lambda": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ]
+}
