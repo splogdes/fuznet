@@ -900,8 +900,9 @@ NetlistStats Netlist::get_stats() const {
     stats.total_nets = static_cast<int>(nets.size());
 
     for (const auto& module_ptr : modules)
-        if   (module_ptr->spec.combinational) ++stats.comb_modules;
-        else                                  ++stats.seq_modules;
+        if        (module_ptr->is_buffer())        continue;
+        else if   (module_ptr->spec.combinational) ++stats.comb_modules;
+        else                                       ++stats.seq_modules;
 
     stats.total_modules = static_cast<int>(modules.size());
 
